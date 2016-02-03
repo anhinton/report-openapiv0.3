@@ -80,7 +80,7 @@ end.rcode</xsl:comment>
 	    <xsl:value-of select="name"/>
 	    <!-- email -->
 	    <xsl:if test="email">
-	    <br/><xsl:element name="a"><xsl:attribute name="href"><xsl:value-of select="email"/></xsl:attribute><xsl:value-of select="email"/></xsl:element></xsl:if>
+	    <br/><xsl:element name="a"><xsl:attribute name="href">mailto:<xsl:value-of select="email"/></xsl:attribute><xsl:value-of select="email"/></xsl:element></xsl:if>
 	  </p>
 	</xsl:for-each>
 	<!-- affiliation -->
