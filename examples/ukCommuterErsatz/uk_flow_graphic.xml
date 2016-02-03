@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Plot a big old graphic of UK commute flow - http://127.0.0.1:8080/report/R%20spatial%20|%20The%20CASA%20Blog%20Network.html</description>
+  <input name="graphics_script">
+    <file ref="graphics_script.R"/>
+    <format formatType="text">R script</format>
+  </input>
+  <input name="trips">
+    <internal symbol="dest.xy"/>
+    <format formatType="text">R data frame</format>
+  </input>
+  <source>
+    <script><![CDATA[source("graphics_script.R")]]></script>
+  </source>
+  <!-- <output name="pdffile"> -->
+  <!--   <file ref="Rplots.pdf"/> -->
+  <!--   <format formatType="text">PDF file</format> -->
+  <!-- </output> -->
+  <output name="pngfile">
+    <file ref="ukCommuterGraphic.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+</module>

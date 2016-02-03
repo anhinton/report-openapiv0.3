@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<pipeline xmlns="http://www.openapi.org/2014/">
+  <component name="xinclude">
+    <file ref="xinclude.xml"/>
+  </component>
+  <component name="figureNumbers">
+    <file ref="figureNumbers.xml"/>
+  </component>
+  <component name="convertQuotes">
+    <file ref="convertQuotes.xml"/>
+  </component>
+  <component name="contents">
+    <file ref="contents.xml"/>
+  </component>
+  <component name="toRhtml">
+    <file ref="toRhtml.xml"/>
+  </component>
+  <component name="knitReport">
+    <file ref="knitReport.xml"/>
+  </component>
+  <pipe>
+    <start component="xinclude" output="report.xml"/>
+    <end component="figureNumbers" input="report.xml"/>
+  </pipe>
+  <pipe>
+    <start component="figureNumbers" output="report.xml"/>
+    <end component="convertQuotes" input="report.xml"/>
+  </pipe>
+  <pipe>
+    <start component="convertQuotes" output="report.xml"/>
+    <end component="contents" input="report.xml"/>
+  </pipe>
+  <pipe>
+    <start component="contents" output="report.xml"/>
+    <end component="toRhtml" input="report.xml"/>
+  </pipe>
+  <pipe>
+    <start component="toRhtml" output="report.Rhtml"/>
+    <end component="knitReport" input="report.Rhtml"/>
+  </pipe>
+</pipeline>

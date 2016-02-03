@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description/>
+  <input name="data">
+    <internal symbol="data"/>
+    <format formatType="text">R data frame</format>
+  </input>
+  <input name="clusters">
+    <internal symbol="clusters"/>
+    <format formatType="text">R kmeans object</format>
+  </input>
+  <source>
+    <script><![CDATA[png("scattermatrix.png")
+pairs(data, col = rainbow(3)[clusters$cluster])
+dev.off()]]></script>
+  </source>
+  <output name="scattermatrix.png">
+    <file ref="scattermatrix.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+</module>

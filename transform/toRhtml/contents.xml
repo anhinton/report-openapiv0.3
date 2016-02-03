@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Produce table of contents from document xml</description>
+  <input name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </input>
+  <source>
+    <file ref="contents.R"/>
+  </source>
+  <output name="contents.xml">
+    <file ref="~/uoastorage/openapi/documentation/report/contents.xml"/>
+    <format>XML file</format>
+  </output>
+  <output name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </output>     
+</module>

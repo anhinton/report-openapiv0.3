@@ -1,0 +1,2460 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<?xml-stylesheet type="text/xsl" href="xsl/preview.xsl"?>
+<!-- Time-stamp: "2016-02-01 18:36:22 ashley"-->
+<!DOCTYPE document [
+  <!ENTITY mdash "&#x2014;">
+  <!ENTITY ndash "&#x2013;">
+  <!ENTITY conduit "<code>conduit</code>">
+  <!ENTITY us "_">
+  <!ENTITY tilde "~">
+  <!ENTITY bar "|">
+]>
+<document xmlns:xi="http://www.w3.org/2001/XInclude">
+  
+  <head>
+    <title>OpenAPI version 0.3</title>
+    <subtitle>Improving the OpenAPI architecture</subtitle>
+    <authors>
+      <author>
+	<name>Ashley Noel Hinton</name>
+	<email>ahin017@aucklanduni.ac.nz</email>
+      </author>
+      <author>
+	<name>Paul Murrell</name>
+	<email>paul@stat.auckland.ac.nz</email>
+      </author>
+      <affiliation>Department of Statistics, The University of
+      Auckland</affiliation>
+    </authors>
+    <date>4 February, 2016</date>
+    <description>Technical report about improvements to OpenAPI in
+    versions 0.2 and 0.3.</description>
+  </head>
+
+  <body>
+    <section class="contents">
+      <xi:include parse="xml" href="contents.xml">
+	<xi:fallback>xinclude contents.xml</xi:fallback>
+      </xi:include>
+    </section>
+
+    <section>
+      <h1 class="unnumbered">Introduction</h1>
+
+      <p>The OpenAPI project aims to help people connect with
+      data. OpenAPI is a software architecture for wrapping component
+      pieces of data analysis&mdash;datasets, programming scripts,
+      etc.&mdash;in reusable modules. These simple modules can be
+      combined in pipelines which describe more complex data analysis
+      workflows. Modules and pipelines are created in XML, and
+      executed in software called a glue system. This report details
+      the improvements made to the OpenAPI architecture between
+      versions 0.1 and 0.3.</p>
+
+      <p>Version 0.1 of the OpenAPI architecture introduced the
+      OpenAPI module XML specification for wrapping data analysis
+      scripts. The XML specification for modules was not well-suited
+      to wrapping scripts which had not been written with OpenAPI in
+      mind. This report describes the changes made to the OpenAPI
+      architecture in version 0.3. These changes include the
+      introduction of `vessel' elements for describing inputs and
+      outputs to OpenAPI modules which improve the authoring of module
+      and pipeline XML. This report also describes the introduction of
+      a module `host' machine which allows OpenAPI to address issues
+      concering software dependencies; these issues affect the
+      portability and reproducibility of data analysis
+      workflows. Version 0.3 of the OpenAPI architecture also
+      introduces XML Schema for module and pipeline XML, allowing
+      module and pipeline authors to validate their files.</p>
+
+      <p>This report demonstrates how the changes introduced in
+      OpenAPI v0.3 make it much easier for module authors to wrap
+      `wild' data analysis scripts in OpenAPI modules. This report
+      provides examples of how OpenAPI can be used to execute data
+      analysis code from external scripts, and even from blog
+      posts. The report demonstrates how executing `wild' source
+      scripts using OpenAPI maintains a connection to the original
+      script sources, while also allowing a module or pipeline author
+      to extend or adapt the scripts she wraps. Wrapping data analysis
+      scripts in module XML also allows a module author to archive
+      versions of a script against the sometimes ephemeral nature of
+      online resources.</p>
+
+      <p>The OpenAPI pipelines and modules described in this report
+      were all created, tested and executed in &conduit;, a prototype
+      OpenAPI glue system implemented as an R package. The &conduit;
+      package source code is available online at
+      <url>https://github.com/anhinton/conduit</url>. The &conduit;
+      package was also improved as part of this project: these changes
+      were implemented in version 0.3 of &conduit;, which available
+      for download at
+      <url>https://github.com/anhinton/conduit/releases/tag/v0.3</url>.
+      </p>
+
+      <p>This report may give the impression that OpenAPI and
+      &conduit; have made the leap from version 0.1 to 0.3 without any
+      mention of version 0.2. Many of the changes in this report were
+      implemented in version 0.2 of OpenAPI and &conduit; (<cite
+      key="hinton2015conduit02">Hinton, 2015b</cite>). However, as
+      version 0.3 represents a more fully realised implementation of
+      the changes described here, only version 0.3 is mentioned
+      within.</p>
+      
+      <h2>Outline</h2>
+
+      <p>The following outline should serve as a map to the various
+      sections of this report:</p>
+
+      <ul>
+	<li><a href="#sec-background">Background</a>: The first section of
+	this report provides some context for the aims of the OpenAPI
+	project. This section also describes the composition of the
+	OpenAPI architecture, and how its pieces interact.</li>
+	<li><a href="#sec-problems-in-openapi-version-0.1">Problems in
+	OpenAPI version 0.1</a>: the second section of this report
+	describes the problems identified in the XML specification of
+	OpenAPI v0.1. This section also describes the difficulties of
+	wrapping data analysis scripts which were not written
+	specifically for OpenAPI, i.e. almost every data analysis
+	script in the `wild'. The XML examples in this section were
+	written using OpenAPI v0.1.</li>
+	<li><a href="#sec-changes-in-openapi-version-0.3">Changes in
+	OpenAPI version 0.3</a>: this section details the changes in
+	the OpenAPI XML specification found in version 0.3. This
+	section demonstrates improvements over OpenAPI v0.1 using XML
+	examples. Each change to OpenAPI is followed by a module or
+	pipeline example to illustrate the improvement.</li>
+	<li><a href="#sec-running-wild-source-scripts">Running `wild'
+	source scripts</a>: This section provides examples of how the
+	improvements in OpenAPI v0.3 make it easier to wrap source
+	scripts, including those found embedded in other
+	documents. These examples also demonstrate how OpenAPI v0.3
+	makes it possible to subset and modify `wild' data analysis
+	scripts while preserving connections to original scripts. The
+	examples in this section demonstrate the changes and
+	improvements made in OpenAPI v0.3.</li>
+	<li><a href="#appendix-technical-requirements">Technical
+	requirements</a>: Details of the system used to execute the
+	pipeline and module examples contained in this report.</li>
+	<li><a href="#appendix-pipeline-examples">Pipeline
+	examples</a>: Full pipeline and module examples used in the
+	report, including code for executing the pipelines in
+	&conduit; v0.3, and final output.</li>
+      </ul>
+
+    </section>
+
+    <section id="sec-background">
+      <h1>Background</h1>
+
+      <p>As the world collects and makes available more and more data
+      it is increasingly important for people to be able to access,
+      understand and use this data to make decisions in their
+      lives. Government initiatives like the New Zealand Government
+      Open Access and Licensing framework (NZGOAL), and data.gov.uk
+      have made more government and public data available online
+      (<cite key="dia2011declaration">Department of Internal Affairs,
+      2011</cite>; <cite key="cabinetoffic2010government">Cabinet
+      Office, 2010</cite>).</p>
+
+      <p>Almost all newly available data is provided online digitally,
+      in a variety of proprietary and open file formats; these files
+      can be read into various commercial and open software
+      applications where the user can manipulate the data, perform
+      analyses on them, and produce various summaries and graphics
+      describing the data. A key challenge in helping people to
+      connect with data is that even with freely accessible data and
+      freely available software tools the data user still needs a host
+      of skills to make use of the data, and of the tools. Hinton and
+      Murrell (<cite key="hinton2015introducing">2015a</cite>) suggest
+      that, as well as access to data, the following are required for
+      people to fully connect with data:</p>
+
+      <ul>
+	<li>domain knowledge: a data user cannot make use of data if she
+	does not have a contextual understanding of where the data comes
+	from and what it means;</li>
+	<li>data science skills: a data user must know what analytical
+	tools are available and how they can be used to examine data
+	sets;</li>
+	<li>statistical graphics skills: a data user must know what
+	graphical tools are available, and how they can be used to
+	explore the characteristics of the data;</li>
+	<li>graphical design skills: a data user must know how to
+	produce meaningful graphics which do not mislead the reader, and
+	which meet graphical design and presentation norms.</li>
+      </ul>
+
+      <p>It is understandably very rare to find someone who is the
+      master of all of these skills, however, and it is perhaps too
+      demanding to expect an everyday person to be expert in even one
+      of these categories. One solution to this problem is to design
+      software which provides many of these skills for the user, and
+      which allows users to share what skills they have with other
+      users. OpenAPI takes a different approach; as described in
+      Hinton (<cite key="hinton2015helping">2015a</cite>) the OpenAPI
+      architecture is designed to help solve this problem by
+      being:</p>
+
+      <ul>
+	<li>modular,</li>
+	<li>reusable,</li>
+	<li>shareable,</li>
+	<li>extensible,</li>
+	<li>open and free,</li>
+	<li>not overly technical,</li>
+	<li>not monolithic, and,</li>
+	<li>compatible with reproducible research.</li>
+      </ul>
+
+      <p>Perhaps most importantly, the OpenAPI architecture is
+      intended to make it easy to incorporate existing resources, like
+      data analysis scripts, without the authors of these scripts
+      having to be aware of OpenAPI at all.</p>
+
+      <h2>The OpenAPI architecture</h2>
+
+      <p>The OpenAPI architecture consists of XML specifications for
+      `module' and `pipeline' files: module XML files wrap scripts of
+      programming code which describe tasks in data analysis; pipeline
+      XML files describe how to connect and combine the inputs and
+      outputs from several modules as a data workflow. The OpenAPI
+      architecture also specifies requirements for software which can
+      create, interpret, and execute modules and pipelines; an
+      instance of such software is called a `glue system' (<cite
+      key="hinton2015introducing">Hinton &amp; Murrell,
+      2015a</cite>).</p>
+
+      <p>A <code>&lt;module&gt;</code> is the smallest piece in the
+      OpenAPI system. A module XML file wraps a data script, specifies
+      the platform or language in which this script can be executed,
+      and names the inputs required and the outputs produced by this
+      script (<cite key="hinton2015introducing">Hinton &amp; Murrell,
+      2015a</cite>).</p>
+
+      <p>A <code>&lt;pipeline&gt;</code> XML file describes how a
+      module's outputs are to be connected to the inputs of other
+      modules; the output of one module can be provided as the input
+      of another module through a <code>&lt;pipe&gt;</code>
+      element. Executing a pipeline results in the execution of all
+      the wrapped module scripts contained within (<cite
+      key="hinton2015introducing">Hinton &amp; Murrell,
+      2015a</cite>).</p>
+
+      <p>Modules and pipelines are executed by a software `glue
+      system'. An OpenAPI glue system is responsible for ensuring that
+      a module's inputs are satisfied, and that its outputs can be
+      resolved. The glue system is responsible for providing one
+      module's output as another module's inputs as described by a
+      pipeline XML file (<cite key="hinton2015introducing">Hinton
+      &amp; Murrell, 2015a</cite>). The &conduit; package is a
+      prototype OpenAPI glue system written in R. Version 0.1 of
+      &conduit; (<cite key="hinton2015conduit011">Hinton &amp;
+      Murrell, 2015b</cite>) was released in February 2015.</p>
+
+      <p>The following is a simple example of a pipeline, written in
+      OpenAPI v0.3. First, the module XML file, `module1.xml':</p>
+
+      <pre><code><xi:include href="examples/test_pipeline/module1.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module wraps a source script which produces a vector of
+      ten random numbers in R, called `x', and labels this as a module
+      output. A second module XML file, `module2.xml':</p>
+
+      <pre><code><xi:include href="examples/test_pipeline/module2.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module requires an input, called `numbers'. The module
+      source script creates a plot of this input in R, and labels the
+      PDF file of the plot created as an output, called `plot'. The
+      following pipeline XML connects these two modules:</p>
+
+      <pre><code><xi:include href="examples/test_pipeline/pipeline.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This pipeline loads each module as a <code>component</code>,
+      and connects the `x' output from `module1' to the `numbers' input
+      from `module2' using a <code>pipe</code> element. When this
+      pipeline is executed by a glue system `module1' will be executed
+      first; its output, `x', will be made available to `module2', which
+      will then be executed.</p>
+
+      <p>The OpenAPI architecture attempts to improve the
+      accessibility and reusability of data sources and computer
+      scripts, particularly scripts for working with data, by
+      providing multiple methods of contributing to a solution, at
+      multiple levels of skill and expertise. The next section
+      describes some of the problems with the version 0.1 of the
+      OpenAPI architecture.</p>
+
+      <!-- section break -->
+
+    </section>
+
+    <section id="sec-problems-in-openapi-version-0.1">
+
+      <h1>Problems in OpenAPI version 0.1</h1>
+
+      <p>Version 0.1 of the OpenAPI XML specification of pipeline and
+      module XML files was described in Hinton and Murrell (<cite
+      key="hinton2015introducing">2015a</cite>). A key feature of the
+      OpenAPI architecture is that it should allow users to wrap
+      scripts&mdash;especially those authored by someone
+      else&mdash;without having a high knowledge of the script's
+      programming language. An ideal situation is that a module author
+      should only have to know the names and formats of the resources
+      that a script requires in order to be executed (its inputs), and
+      the names and formats of the resources it produces which the
+      author may want to consume or retrieve (its outputs). Most
+      existing scripts&mdash;`wild' scripts&mdash;will not have been
+      written with OpenAPI in mind, and so the OpenAPI architecture
+      must be able to cope with this.</p>
+
+      <p>In this section we will describe several problems with OpenAPI
+      version 0.1, including:</p>
+
+      <p>This specification was implemented in version 0.1 of the
+      &conduit; package. This implementation suffers from problems
+      with:</p>
+
+      <ul>
+	<li>Specifying module <code>&lt;input&gt;</code> and
+	<code>&lt;output&gt;</code> elements</li>
+	<li>Specifying module <code>&lt;source&gt;</code> elements</li>
+	<li>Meeting module dependencies</li>
+	<li>Validating module and pipeline XML</li>
+      </ul>
+
+      <p>We will then describe how these problems make OpenAPI version
+      0.1 unsuitable for transparently wrapping and executing `wild'
+      data scripts by way of two examples.</p>
+
+      <h2>Specifying module <code>input</code> and <code>output</code> elements</h2>
+
+      <p>The module XML specification used in OpenAPI version 0.1
+      requires that module <code>&lt;input&gt;</code> and
+      <code>&lt;output&gt;</code> elements have a `name' and a `type'
+      attribute; type can be either ``internal'' or ``external''. In
+      the following code we see an example of an internal-type input
+      and an external-type output:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R"/>
+  <input name="a" type="internal"/>
+  <source><![CDATA[data <- myFun(a)
+png("example.png")
+myPlot(data)
+dev.off()
+]]]]><![CDATA[></source>
+  <output name="dataplot" type="external" ref="example.png"/>
+</module>]]></code></pre>
+
+      <p>An internal-type input or output is an object which is
+      particular to the module's platform&mdash;the above example is
+      executed in the ``R'' platform. A platform's internal objects should
+      be able to be referenced by a symbol. An object is internal to a
+      platform if it can be referenced and accessed by its symbol within
+      the platform and without having to pass the object through the
+      filesystem or some other storage or transmission format. In R
+      these internal objects are common R objects, e.g. vectors and data
+      frames; in Python these are common objects like strings or
+      lists.</p>
+
+      <p>In the above example the input specification indicates that
+      the module source script requires there to be an R object
+      available with symbol ``a''; the glue system will also use the
+      name ``a'' to reference this input in pipelines.</p>
+
+      <p>An external-type input or output is independent of the
+      module's platform. In OpenAPI version 0.1 these objects are
+      files on the local filesystem. A module with an external-type
+      output will produce a resource at the location given by the
+      `ref' attribute; this location could be an absolute file
+      location or a relative file location. A relative file location
+      indicates the file produced will be created relative to the
+      output location of the module when it is executed, the details
+      of which are implemented by a glue system (<cite
+      key="hinton2015introducing">Hinton &amp; Murrell, 2015a</cite>);
+      `path' attributes are not defined for external-type outputs. A
+      module with an external-type input indicates that the module
+      source scripts expect there to be a resource available on
+      execution, the location of which is available to the scripts
+      using the symbol indicated by the `name' attribute; this
+      resource location is provided by the glue system when executing
+      a pipeline which connects this input to an external-type module
+      output.</p>
+
+      <p>In the above example the output specification says that the
+      module source will produce a file object at relative file location
+      ``example.png"; the name ``dataplot'' will be used by a glue system to
+      reference this output in pipelines.</p>
+
+      <h3>Names and symbols</h3>
+
+      <p>The first problem with this specification for input and
+      output types is the conflation between an internal-type input's
+      name, as it is referenced by a glue system, and its symbol. A
+      module author is forced to use the same value for the input's
+      `name' as the symbol used in the source scripts to access this
+      resource. This restriction can be seen in the module XML example
+      above: the module has an input named ``a'', and the module's
+      source script refers to a symbol, ``a''. If the module author
+      wanted to call her input something more meaningful in the
+      context of her pipeline, e.g. ``cleaned&us;dates'', she would
+      have to change the symbol reference throughout the source
+      scripts to ``cleaned&us;dates'':</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R"/>
+  <input name="cleaned_dates" type="internal"/>
+  <source><![CDATA[data <- myFun(cleaned_dates)
+    ...
+  ]]]]><![CDATA[></source>
+</module>]]></code></pre>
+
+      <p>Alternatively, she could prepend the source script with a line
+      assigning her preferred name to the symbol used in the source
+      script, for example:</p>
+
+      <pre><code><![CDATA[<source><![CDATA[a <- cleaned_dates
+data <- myFun(a)
+  ...
+]]]]><![CDATA[></source>]]></code></pre>
+
+      <p>Now the author is free to name her module input
+      ``cleaned&us;dates'', but she <em>must</em> name it this, or alter the
+      source script again. This limitation restricts the reusability of
+      modules, and forces the author to have knowledge of language of
+      any source scripts she might wish to use.</p>
+
+      <p>Module authors are similarly constrained in naming
+      internal-type module outputs; the `name' specified in the output
+      element must match a symbol available after the execution of the
+      source scripts. This imposes the same restrictions as mentioned
+      above: a module author must either conform to the symbol names
+      given in the source script in naming internal-type module outputs,
+      or she must modify the source scripts so as to ensure a symbol
+      with her preferred name exists.</p>
+
+      <h3>Passing external objects into modules</h3>
+      
+      <p>A second issue involves the use of external-type module
+      inputs. OpenAPI version 0.1 makes external object resources
+      available to module source scripts by creating an object which
+      contains the resource location before the execution of the
+      module's source script. If a module needs a CSV file for script
+      execution, the script must refer to the CSV file location using
+      a symbol matching the input's `name' when it is accessed in
+      code.</p>
+
+      <p>As an example, the following R script demonstrates how a script
+      author might normally refer to a CSV file found at resource
+      location ``bigdata.csv":</p>
+
+      <pre><code><![CDATA[if (file.exists("bigdata.csv")) {
+  data <- read.csv("bigdata.csv")
+}]]></code></pre>
+
+      <p>If a module author intended for the resource location used in a
+      module script to be provided by another module's external-type
+      output she must refer to the resource location using a symbol
+      matching her module's external-type `name' attribute, for
+      example:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R"/>
+  <input name="csvfile" type="external"/>
+  <source><![CDATA[if (file.exists(csvfile)) {
+  data <- read.csv(csvfile)
+}]]]]><![CDATA[></source>
+</module>]]></code></pre>
+
+      <p>On execution of a pipeline including this module the &conduit;
+      glue system resolves the external-type input resource by
+      prepending the module's source scripts with an assignment to the
+      symbol given by `name':</p>
+
+      <pre><code><![CDATA[csvfile <- "bigdata.csv" # prepended by glue system
+
+## original source script follows ##
+if (file.exists(csvfile)) {
+  data <- read.csv(csvfile)
+}]]></code></pre>
+
+      <p>This makes writing modules with external-type inputs an
+      unnecessary burden on the module author as she must carefully
+      alter the source script. Even if the author has knowledge of the
+      language in which the script is written it is likely that the
+      changes required to alter a script in this fashion will not be
+      typical of how scripts in this language are composed.</p>
+
+      <h3>Starting with an external input</h3>
+
+      <p>A third problem with the OpenAPI v0.1 module specification is
+      the difficulty of running a module with an external-type input
+      in isolation; an equivalent problem is running a pipeline where
+      the first module requires an external-type input. An
+      external-type <code>&lt;input&gt;</code> element does not
+      contain any information about where the file resource can be
+      found; this location is resolved by the glue system when a
+      pipeline is executed; an external-type module input can only be
+      provided by another module's external type module output. In a
+      pipeline the originating module's output is connected by a pipe
+      to the consuming module's input. The originating external-type
+      output contains a `ref' attribute, which the glue system uses to
+      resolve the location of the external resource. As external-type
+      module inputs do not contain `ref' attributes the glue system
+      has no way of resolving a resource location from module XML
+      alone.</p>
+
+      <p>Consider the following module, which requires a CSV file as an
+      external-type input, and produces an R data frame as an
+      internal-type output:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R" />
+  <input name="csvfile" type="external">
+    <format>CSV file</format>
+  </input>
+  <source>
+    <![CDATA[bigdata <- read.csv(csvfile)]]]]><![CDATA[>
+  </source>
+  <output name="bigdata" type="internal">
+    <format>R data frame</format>
+  </output>
+</module>]]></code></pre>
+
+      <p>If a module author wanted to supply a local file,
+      `/home/bigauthor/data/bigdata.csv', as an input to this module she
+      cannot do so using the module XML available. The author could
+      provide a module with no inputs or sources which names the file
+      location as a `dummy' external-type output:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R" />
+  <output name="bigdata.csv" type="external" ref="/home/bigauthor/data/bigdata.csv">
+    <format>CSV file</format>
+  </output>
+</module>]]></code></pre>
+
+      <p>The module author can execute her new module by executing a
+      pipeline connecting these two modules. However she cannot easily
+      execute her module in isolation. To execute her module on its
+      own she could remove the external-type input and explicitly
+      reference the CSV file in her module source script:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R" />
+  <source>
+    <![CDATA[bigdata <- read.csv("/home/bigauthor/data/bigdata.csv")]]]]><![CDATA[>
+  </source>
+  <output name="bigdata" type="internal">
+    <format>R data frame</format>
+  </output>
+</module>]]></code></pre>
+
+      <p>This module can now be run in isolation. However it is now only
+      usable at the start of a pipeline, and cannot receive other
+      module outputs as an input. Any subsequent user of the module will
+      have to edit the module's source script to change data sources,
+      rather than altering the module inputs. This has the undesirable
+      effect of solving the problem of starting a pipeline from a data
+      file by sacrificing the reusability of the module.</p>
+
+      <h3>Files, URIs and URLs</h3>
+
+      <p>Though we have demonstrated some of the issues with using
+      external-type module outputs to refer to files on the local
+      filesystem, the implementation of the external-type module
+      outputs in &conduit; version 0.1 actually treats the value of
+      `ref' as a uniform resource identifier (URI). The &conduit;
+      package assumes this URI will use the file:// scheme, however,
+      no checking of scheme is done by &conduit;, and the value of an
+      output's `ref' is passed directly to any module for which a pipe
+      connects this output to an input. As described above, &conduit;
+      ensures that a symbol referencing the location given by the
+      output's `ref' is created prior to the execution of the source
+      scripts; the script author is responsible for deciding how to
+      handle this resource location, and whether to handle it using
+      file://, http://, https://, some other URI scheme, or even as a
+      custom character string. A glue system cannot determine what
+      scheme is intended by an external-type output's `ref' without
+      parsing the value given.</p>
+      
+      <p>Therefore, although Hinton and Murrell (<cite
+      key="hinton2015introducing">2015a</cite>) did not document this
+      fact, it is possible in &conduit; version 0.1 to provide URLs as
+      external-type module outputs, and for these to be consumed by
+      external-type module inputs. For the same reason mentioned above
+      it is not possible to execute a module which requires an
+      external-type input referencing a URL in isolation, nor to begin
+      a pipeline from a URL data source without a dummy module naming
+      a URL output.</p>
+
+      <h2>Specifying module <code>source</code> elements</h2>
+
+      <p>The module XML specification implemented in OpenAPI version
+      0.1 uses a `ref' attribute in its <code>&lt;source&gt;</code>
+      elements in a similar fashion to how it is used in module output
+      elements: `ref' provides a URI for a resource which contains a
+      source script to be executed. As with module outputs the
+      resource location provided by `ref' is assumed to use the
+      file:// scheme by default, but support is also included for
+      http:// and https:// schemes. As with external-type outputs, a
+      glue system cannot determine which scheme is used by a source's
+      `ref' attribute without parsing the value given.</p>
+
+      <p>Further, the specification for source elements is inconsistent
+      between source elements which reference a script using the `ref'
+      attribute and source elements which contain the script inline as
+      the element's content. It is possible for a source element to have
+      both a `ref' attribute, and to contain an inline script, as seen
+      here:</p>
+
+      <pre><code><![CDATA[<source ref="cleanData.R">
+  <![CDATA[x <- runif(100, 1, 100)]]]]><![CDATA[>
+</source>]]></code></pre>
+
+      <p>The source script referenced by ``cleanData.R'' might assign an
+      entirely different value to the symbol `x'; it would then be up to
+      a glue system to decide how to handle this situation, as it is not
+      obvious from the specification which script should take
+      precedence. A module author would therefore be uncertain of the
+      result of executing a module with such a source.</p>
+
+      <h2>Meeting module dependencies</h2>
+
+      <p>The current XML specification for OpenAPI modules does not
+      include any explicit mechanism for addressing the system
+      dependencies of the module's source scripts. The implementation
+      requires the user to set the module's source language, called it's
+      `platform', using the <code>&lt;platform&gt;</code> element as in
+      the following example:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R"/>
+    ...
+  <source><![CDATA[library("rgl")
+    ....
+]]]]><![CDATA[></source>
+    ...
+</module>]]></code></pre>
+
+      <p>If the glue system used to execute this module supports the
+      ``R" language, the source scripts wrapped by the module will be
+      executed in an R environment. In the above example the
+      <code>rgl</code> package (<cite key="adler2015rgl">Adler,
+      Murdoch &amp; others, 2015</cite>) is attached at the beginning
+      of the source script; if the <code>rgl</code> package has not
+      been installed in the glue system's R environment this module
+      will likely fail to execute. One possible solution to a missing
+      package in R (or a missing library in Python, etc.) is to change
+      the source script to guarantee the package is available as
+      in:</p>
+
+      <pre><code><![CDATA[<module>
+  <platform name="R"/>
+    ...
+  <source><![CDATA[if (!require("rgl")) {
+install.packages("rgl", lib = Sys.getenv("R_LIBS_USER"),
+repo="http://cran.stat.auckland.ac.nz")
+}
+require("rgl")
+  ....
+]]]]><![CDATA[></source>
+    ...
+</module>]]></code></pre>
+
+      <p>Now the module source script checks to see if the
+      <code>rgl</code> package is installed, and installs it if
+      not. However, the <code>rgl</code> package itself has system
+      dependencies which, if not met, will prevent the installation of
+      the <code>rgl</code>package. The OpenAPI module specification
+      does not provide a mechanism for checking for system
+      dependencies in such cases.</p>
+
+      <p>It is also very likely that module authors will wrap source
+      scripts which depend on specific versions of software. OpenAPI
+      v0.1 does not provide a mechanism for specifying which version
+      of a language, or its associated libraries and packages, should
+      be installed. Hinton and Murrell (<cite
+      key="hinton2015introducing">2015a, `Discussion'</cite>) suggest
+      that the OpenAPI XML specification could include a mechanism for
+      running a module's source scripts on a specific host machine;
+      this host could be set up with the module's exact software
+      requirements, and be made available to module users. Support for
+      host machines is not included in OpenAPI v0.1 or in &conduit;
+      v0.1.</p>
+
+      <h2>Validating module and pipeline XML</h2>
+
+      <p>Although the XML specification was described in detail by
+      Hinton and Murrell (<cite
+      key="hinton2015introducing">2015a</cite>) only an informal test
+      for the validity of an OpenAPI pipeline or module XML file
+      exists: if a pipeline or module can be read and executed by the
+      &conduit; package it is assumed to be valid. It is desirable to
+      have a more formal specification and test of validity for module
+      and pipeline XML files in the form of an XML Document Type
+      Definition (DTD) and/or XML Schema to ensure the consistency of
+      OpenAPI documents.</p>
+
+      <h2>Running `wild' source scripts</h2>
+
+      <p>The OpenAPI architecture aims to make it easy to wrap and
+      execute `wild' data analysis scripts in module XML. However,
+      several of the problems described above make this very difficult
+      in OpenAPI v0.1. We will give two examples which highlight the
+      difficulties in wrapping `wild' scripts.</p>
+
+      <p>The first example demonstrates how a simple R script found in
+      the `wild' might present a challenge to an OpenAPI module
+      author. This script was published on the University of
+      Auckland's Statistics 330 website as supplementary code to a
+      lecture on R graphics (<cite key="klaere2015stats330">Klaere,
+      2015</cite>). The first 21 lines of the script are:</p>
+
+      <pre><code><![CDATA[##############################
+### STATS 330/762 - Lecture 3: Graphics
+### 23/07/2015
+### Dr. Steffen Klaere
+### Supplementary Code
+### NEEDS: hb1.csv and fever_data.csv
+##############################
+
+### Change working directory
+# Adapt to your own needs
+setwd("<Your Directory>")
+
+### Packages
+library(R330)
+
+###################################
+### First example, Exchange rates
+###################################
+exchange <- read.csv("hb1.csv")
+exchange[,1] <- as.Date(sapply(exchange[,1],function(x){paste(1,x)}),format="%d %B %Y")
+plot(USD~month,data=exchange,type="l",lwd=4,col="steelblue",xlab="Date",ylab="Exchange rate",main="Exchange rate between US$ and NZ$")]]></code></pre>
+
+      <p>As Klaere has helpfully indicates on line six, this script
+      requires two files: `hb1.csv' and `fever&us;data.csv', both
+      available from the course website; the first of these files is
+      called on explicitly by its filename in line 19. These files are
+      obvious candidates for module inputs. However, as mentioned
+      above, there is no straightforward way of describing file inputs
+      to an OpenAPI module&mdash;file inputs to modules must be the
+      outputs of other modules, or the module source script must be
+      modified to adapt to file locations. The module author is faced
+      with both editing the source script <em>and</em> creating dummy
+      module outputs simply to provide files to a script. Of course,
+      she can simply leave the script as is, and make sure the files
+      are in the right file location, restricting her pipeline's
+      reusability and modularity. None of these options provides a
+      simple way of wrapping a script for inclusion in a pipeline, or
+      even for executing the script on its own.</p>
+
+      <p>If even this simple example of wrapping a source script in an
+      OpenAPI module seems difficult, then wrapping other common
+      `wild' data scripts proves even more difficult. For example, it
+      is common to find data analysis scripts, in R, Python, and other
+      languages, embedded in blog posts, as in <a
+      href="#figure-1">Figure 1</a>.</p>
+
+      <figure src="images/2015-10-04-blog-code.png" alt="A blog
+      post with code chunks"><figcaption>Screen capture of a blog post
+      containing R code chunks
+      <url>http://blogs.casa.ucl.ac.uk/category/r-spatial/</url>
+      </figcaption></figure>
+
+      <p>In the blog post shown in <a href="#figure-1">Figure 1</a>
+      (<cite key="cheshire2015mapping">Cheshire, 2015</cite>) we see R
+      code chunks mixed with descriptive text. It would not be
+      possible to execute the entire blog post as an R script; if an
+      author wanted to wrap this script in an OpenAPI module she must
+      select only the parts of the blog post which contain executable
+      R code. Even then the author must still arrange for the data
+      file, `wu03ew&us;v1.csv', and any other data dependencies, to be
+      resolved as module inputs with all the same difficulties
+      mentioned above.</p>
+
+      <p>In the next section we will describe how the problems and
+      limitations in OpenAPI v0.1 have been addressed in OpenAPI
+      v0.3.</p>
+      
+      <!-- section break -->
+
+    </section>
+
+    <section id="sec-changes-in-openapi-version-0.3">
+
+      <h1>Changes in OpenAPI version 0.3</h1>
+
+      <p>One of the main aims of this project was to improve the OpenAPI
+      XML specification to deal with the problems detailed in the
+      previous section. This project has made improvements to the XML
+      specification for modules and pipelines by:</p>
+
+      <ul>
+	<li>Introducing vessels to reference resources in module
+	inputs, outputs, and sources, and in pipeline components;</li>
+	<li>Refactoring module platform elements into module
+	`language' attributes;</li>
+	<li>Adding host specification to modules;</li>
+	<li>Specifying XML Schema for valid pipeline and module
+	XML.</li>
+      </ul>
+
+      <h2>Vessels</h2>
+      
+      <p>As described in the previous section, the way module inputs,
+      outputs, and sources were specified was inconsistently designed
+      in OpenAPI v0.1. Module input and output elements featured the
+      somewhat vague `name' attribute, which was used inconsistently
+      throughout v0.1. This was combined with a `type' attribute which
+      attempted to indicate whether an input or output was
+      ``internal'' to the module's language, or ``external'' as in a
+      file or URL. Output elements had `ref' attributes to indicate
+      the file or URL address of a module's output, but input elements
+      had no ability to specify a particular resource using
+      `ref'. Module source elements also featured `ref' attributes,
+      but this functioned as in indicator of a file to be read into
+      the module, and not an output produced by the module, as was the
+      case for the `ref' attribute in output elements.</p>
+
+      <p>This project introduces a new element-type in OpenAPI v0.3,
+      which we have called `vessel' elements. A vessel element is
+      designed to act as a pointer to a resource which a module either
+      consumes when executed, or produces as a consequence of its
+      execution. A vessel is required inside each module
+      <code>input</code>, <code>output</code>, or <code>source</code>
+      element. Instead of an input or output declaring a `type', the
+      vessel element's name indicates the type of resource used;
+      <code>internal</code>-, <code>file</code>-, <code>url</code>-,
+      and <code>script</code>-type vessels have been implemented in
+      OpenAPI v0.3. The following code demonstrates how a module input
+      can refer to an internal resource through a vessel element:</p>
+
+      <pre><code><![CDATA[<input name="in1">
+  <internal symbol="pricelist"/>
+</input>]]></code></pre>
+
+      <p>In OpenAPI v0.3 a module input or output element now has only
+      one attribute: `name'. The `name' attribute is used by OpenAPI
+      pipeline XML and an OpenAPI glue system to indicate a specific
+      input or output element; the `name' attribute does not have to
+      correspond to the way a resource is labelled within a module
+      source script. Attributes of a module input or output's vessel
+      element will still correspond to details inside source scripts,
+      but a module author is no longer constrained by the naming
+      choices of a script author.</p>
+
+      <p>A vessel element serves as an interface to a resource which
+      is common across the parts of OpenAPI XML which consume or
+      produce resources. A vessel is not intended to be the resource
+      itself, but rather a pointer to the resource. In the case of
+      module inputs a vessel points to a resource which should already
+      exist at the time a module is executed; vessel elements in
+      module outputs point to a resource which will exist after a
+      module is executed; vessel elements in module
+      <code>source</code> elements point to a reference which will be
+      read in by an OpenAPI glue system in order to execute a
+      module.</p>
+
+      <p>A vessel type can be defined for any type of resource which
+      can be referenced by a pointer to the the resource, e.g. a file
+      path for file resources, or a URL for resources available over a
+      network interface. An OpenAPI glue system should provide methods
+      for resolving each type of vessel resource it supports; a glue
+      system does not have to be able to read from the resource
+      indicated by a vessel, but it must be able to determine whether
+      or not the resource indicated by a vessel can be accessed by a
+      module's source scripts.</p>
+
+      <h3>Vessel use in module inputs and outputs</h3>
+
+      <p>Under OpenAPI v0.1 module input and output elements could
+      have either an ``internal'' or ``external'' type; internal
+      inputs and outputs pass objects native to the module's language,
+      while external inputs and outputs pass external objects like
+      files or URLs. OpenAPI v0.3 replaces this mechanism with several
+      vessel elements for module inputs and outputs. The vessel types
+      available in OpenAPI v0.3 are <code>internal</code>,
+      <code>file</code> and <code>url</code>. A description of these
+      vessel types follows.</p>
+
+      <h3>Internal vessels</h3>
+
+      <p>For each language supported by an OpenAPI glue system there
+      is support for transmitting an object internal to this language
+      from one module to another through outputs and inputs with
+      <code>internal</code> vessel elements. An
+      <code>internal</code>-type vessel contains a `symbol' attribute,
+      which indicates the symbol with which the object is associated
+      within a module's source scripts. The following XML demonstrates
+      how an <code>internal</code>-type input was described for a
+      module input in OpenAPI v0.1:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  <input name="prices" type="internal">
+    ...
+  </input>
+  ...
+</module>]]></code></pre>
+
+      <p>The following XML code demonstrates how this is now done
+      using an <code>internal</code>-type vessel in OpenAPI v0.3:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  <input name="prices">
+    <internal symbol="pricelist"/>
+    ...
+  </input>
+  ...
+</module>]]></code></pre>
+
+      <p>This XML describes a module to be executed using R, with an
+      input named `prices'; an OpenAPI pipeline can describe a pipe
+      from another module to this input using this name. The `prices'
+      input contains an <code>internal</code>-type vessel, which
+      indicates that the resource has the symbol `pricelist'; this
+      indicates that the module's source scripts require an object to
+      be available with the symbol `pricelist'. The input `name' and
+      internal `symbol' do not have to match, allowing the module
+      author to label elements within a pipeline however she chooses
+      without modifying the source scripts.</p>
+
+      <p>The next code example demonstrates how an internal-type
+      output is described in OpenAPI v0.1:</p>
+
+      <pre><code><![CDATA[<module language="python">
+  ...
+  <output name="suburbs" type="internal">
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>The following code demonstrates how an
+      <code>internal</code>-type vessel can be used with a module
+      output in OpenAPI v0.3:</p>
+
+      <pre><code><![CDATA[<module language="python">
+  ...
+  <output name="suburbs">
+    <internal symbol="suburbNames"/>
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>This XML describes a module to be executed using Python, with
+      an output named `suburbs'; an OpenAPI pipeline can connect this
+      output to another module's input using this name. The `suburbs'
+      input contains an <code>internal</code>-type vessel which
+      indicates that the resource has assigned to the symbol
+      `suburbNames'; this indicates that the module's source scripts
+      will have produced an object internal to the python session with
+      the symbol `suburbName' during execution. As with module inputs,
+      an output `name' and internal vessel `symbol' can be completely
+      different, allowing a module author freedom in naming outputs
+      without altering source scripts.</p>
+
+      <h3>Example: names and symbols</h3>
+
+      <p>The <a href="#example-simpleGraph">`simpleGraph' pipeline</a>
+      demonstrates a pipeline containing modules which use
+      <code>internal</code> vessel elements to pass objects between
+      modules. This example demonstrates how <code>internal</code>
+      vessels allow module input and output names to differ from the
+      symbols assigned to the object in the source scripts. The
+      `createGraph.xml' module file contains the following:</p>
+
+      <pre><code><xi:include href="examples/simpleGraph/createGraph.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>The source script of this module creates a ``graphNEL''
+      object called `directedGraph' in an R session. The module
+      declares an output, also called `directedGraph', which uses an
+      <code>internal</code> type vessel to indicate that the object
+      with symbol name `directedGraph' is available to other
+      modules.</p>
+
+      <p>The module file `layoutGraph.xml' contains the following:</p>
+
+      <pre><code><xi:include href="examples/simpleGraph/layoutGraph.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module requires an input, named `directedGraph' by the
+      module author. This input's <code>internal</code> vessel element
+      indicates that the source script requires this object to be
+      given the symbol `myGraph' in the R environment where the source
+      script is executed. The pipeline file,
+      `simpleGraph-pipeline.xml', loads these two modules as
+      `createGraph' and `layoutGraph' respectively, and connects the
+      output from the former to the input in the latter with the
+      following pipe:</p>
+
+      <pre><code><![CDATA[<pipe>
+  <start component="createGraph" output="directedGraph"/>
+  <end component="layoutGraph" input="directedGraph"/>
+</pipe>]]></code></pre>
+
+      <h3>File vessels</h3>
+
+      <p>OpenAPI v0.1 described any module output or input object
+      which is not internal to the module language as ``external''
+      type, which was the principal method for passing file resources
+      between modules. OpenAPI v0.3 allows for resources to be
+      transmitted between module outputs and inputs via the filesystem
+      using <code>file</code>-type vessel elements. A
+      <code>file</code> vessel element contains a `ref' attribute and
+      an optional `path' attribute; the `ref' attribute contains a
+      file path which indicates where the file object is located; the
+      optional `path' attribute indicates a file path from which a
+      glue system should search for a file matching the value in
+      `ref'.</p>
+
+      <p>Module inputs which require file resources are described in
+      OpenAPI v0.1 as follows:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  <input name="suburbIDs" type="external">
+    ...
+  </input>
+  ...
+</module>]]></code></pre>
+
+      <p>Module inputs which require file resources are described in
+      OpenAPI v0.3 as in the following:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  <input name="suburbIDs">
+    <file ref="151023-table.csv"/>
+    ...
+  </input>
+  ...
+</module>]]></code></pre>
+
+      <p>This XML describes a module with an input named `suburbIDs'
+      which requires a file to be available at the file path
+      `151023-table.csv'. The input `name' is used by the glue system
+      to identify this particular module input, and is not required to
+      match any objects or symbols in the source scripts. A module
+      author can use an input with a <code>file</code> vessel to
+      indicate that a module requires a file with a specific name, but
+      can refer to it descriptively within her pipeline without
+      altering the source script.</p>
+
+      <p>The previous example named a relative file path, indicating
+      that the module source scripts require a file resource be
+      available at the file path provided, relative to the directory
+      in which the module scripts are executed&mdash;a glue system is
+      responsible for ensuring this file resource is available in the
+      correct location when the module is executed; this is the
+      situation when an input requires a file resource which is itself
+      an output from another module. The new specification of
+      <code>file</code> vessels also allows module inputs to indicate
+      file resources with absolute file locations, as in the following
+      example:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  <input name="suburbIDs">
+    <file ref="/home/biguser/datasets/matches/151023-table.csv"/>
+    ...
+  </input>
+  ...
+</module>]]></code></pre>
+
+      <p>This example demonstrates a module which requires a file
+      resource from from the local filesystem, available at the file
+      path `/home/biguser/datasets/matches/151023-table.csv'. As the
+      file path provided is absolute the glue system does not need to
+      resolve the input resource's location&mdash;this module can
+      receive a file resource as an input without that resource coming
+      from the output of another module. This allows a module to be
+      executed in isolation, and allows for pipelines to be started from
+      data stored in files.</p>
+
+      <p>OpenAPI v0.1 described module outputs which reference file
+      resources as follows:</p>
+
+      <pre><code><![CDATA[<module language="R">
+  ...
+  <output name="birdPicture" type="external" ref="Rplots.pdf">
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>Using a <code>file</code>-type vessel OpenAPI v0.3 describes
+      a module output which produces a file resource as:</p>
+      
+      <pre><code><![CDATA[<module language="R">
+  ...
+  <output name="birdPicture">
+    <file ref="Rplots.pdf"/>
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>This XML describes a module with an output named
+      `birdPicture'. This name is used by an OpenAPI glue system to
+      refer to the a file resource produced by this module, and to
+      provide this resource to other modules' input in a pipeline; the
+      file resource indicated by this output has the filename
+      `Rplots.pdf'. The name given to the module output does not have
+      to match the name of any object or resource in or produced by
+      the module's source scripts, allowing a module author to name
+      outputs as she likes without altering the source scripts. The
+      <code>file</code> vessel's `ref' attribute names the file path
+      of a resource produced on execution of the module&mdash;the file
+      path given by `ref' should match the file path of a file
+      resource produced by the source script. A glue system must be
+      able to resolve the location of an absolute file path given by
+      `ref'.</p>
+
+      <p>It is also possible for the <code>file</code>-type vessel of
+      a module output to provide an absolute file path in `ref':</p>
+      
+      <pre><code><![CDATA[<module language="python">
+  ...
+  <output name="vendors">
+    <file ref="/data/plots/vendors/processed.csv"/>
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>This XML example indicates that the module source scripts will
+      produce a file resource at the file path
+      `/data/plots/vendors/processed.csv'.</p>
+
+      <h3>Example: passing external objects into modules</h3>
+
+      <p>The introduction of a <code>file</code> vessel element makes
+      it much easier for a module author to pass file objects
+      (previously ``external'' type inputs) to module source
+      scripts. The <a href="#example-shellExample">`shellExample'
+      pipeline</a> provides an example of this. The module file
+      `plotgraphviz.xml' follows:</p>
+
+      <pre><code><xi:include href="examples/shellExample/plotgraphviz.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module requires a file resource, `dot.dot', to be
+      available in the working directory when the module source script
+      is executed. With the use of a <code>file</code> vessel element
+      we can see that the module author can name the input anything
+      she likes&mdash;`dotfile' in this case&mdash;and use the file
+      vessel element to indicate the name of the file required by the
+      script.</p>
+
+      <p>The introduction of <code>file</code> vessel elements also
+      means it is possible for a file resource provided as another
+      module's input to have an entirely different filename to the
+      resource required as a module input. Consider module file
+      `graphtodot.xml':</p>
+
+      <pre><code><xi:include href="examples/shellExample/graphtodot.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module produces an output named `dotfile' which
+      references a file resource with the filename
+      `directedGraph.dot'. The pipeline can use `directedGraph.dot' as
+      the required `dot.dot' by connecting the module output and input
+      via a pipe:</p>
+
+      <pre><code><![CDATA[<pipe>
+  <start component="graphtodot" output="dotfile"/>
+  <end component="plotgraphviz" input="dotfile"/>
+</pipe>]]></code></pre>
+
+      <h3>Example: starting with an external input</h3>
+
+      <p>The introduction of <code>file</code> vessel elements also
+      allows a module or pipeline to be started from a file
+      resource. The <a href="#example-fileStart">`fileStart'
+      module</a> demonstrates how a module can require an input where
+      the file vessel element indicates an absolute file path:</p>
+
+      <pre><code><xi:include href="examples/fileStart/fileStart.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>The input, named `datafile', references a file at path
+      `&tilde;/Desktop/iris.csv'. The module source script also uses this full
+      file path. In this way a module author can start a module, and a
+      whole pipeline, from a file resource on her local machine rather
+      than just from a file resource which results from a module
+      output.</p>
+      
+      <h3>URL vessels</h3>
+
+      <p>Though undocumented, the OpenAPI v0.1 supported the
+      transmission of resources referenced by URLs by declaring a
+      module output or input with an ``external'' type. OpenAPI v0.3
+      introduces the capacity to transmit resources referenced by URLs
+      between modules using <code>url</code>-type vessel elements. A
+      <code>url</code> vessel element contains a `ref' attribute,
+      which contains a URL at which a resource can be resolved over
+      the web via HTTP or HTTPS, and some other network protocols.</p>
+
+      <p>The use of a <code>url</code> type vessel for a module input
+      is demonstrated below:</p>
+      
+      <pre><code><![CDATA[<module language="R">
+  <input name="allEpisodes">
+    <url ref="https://en.wikipedia.org/wiki/List_of_The_X-Files_episodes"/>
+    ...
+  </input>
+  ...  
+</module>]]></code></pre>
+
+      <p>This examples describes a module with an input named
+      `allEpisodes'. The module source scripts require that a resource
+      be available over HTTPS at the URL given in the <code>url</code>
+      vessel element's `ref'
+      attribute&mdash;`https://en.wikipedia.org/wiki/List&us;of&us;The&us;X-Files&us;episodes'.
+      Such a module could be executed in isolation, or could serve as
+      the start of a pipeline as it requires as input an already
+      existing resource which can be used to start a pipeline.</p>
+
+      <p>A module which produces a resource available over the web at
+      a URL can describe this output using a <code>url</code> vessel
+      as follows:</p>
+      
+      <pre><code><![CDATA[<module language="R">
+  ...
+  <output name="episodeTable">
+    <url ref="http://127.0.0.1:80/conduit/episodes.html"/>
+    ...
+  </output>
+</module>]]></code></pre>
+
+      <p>This XML describes a module which will produce a resource
+      available over the web at the URL
+      `http://127.0.0.1:80/conduit/episodes.html'. This output is given
+      the name `episodeTable'. The output name can be used by an OpenAPI
+      glue system to pass this output resource to other modules' inputs
+      through a pipeline.
+      </p>
+
+      <h3>Example: URL vessels</h3>
+
+      <p>The <a href="#example-xfiles_pipeline">`xfiles&us;pipeline'
+      pipeline</a> demonstrates how a module can use a
+      <code>url</code> vessel element in a module input. The module
+      file `xfiles&us;season1.xml':</p>
+
+      <pre><code><xi:include href="examples/xfiles_pipeline/xfiles_season1.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module has an input, named `wikiurl', which requires a
+      URL resource resolvable at
+      `https://en.wikipedia.org/wiki/List&us;of&us;The&us;X-Files&us;episodes'.
+      The module can be started from this URL, as in the example of
+      starting a module from a file resource above.</p>
+
+      <p>This pipeline also contains a module which produces a URL
+      output, `season1&us;html.xml':</p>
+
+      <pre><code><xi:include href="examples/xfiles_pipeline/season1_html.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module produces an output, `season1&us;html', which can be
+      accessed via the URL
+      `http://127.0.0.1:8080/xfiles&us;season&us;1.html'. This output could
+      also be passed to the input of another module requiring a URL
+      resource though a pipe in a pipeline.</p>
+
+      <h3>Vessel use in module sources</h3>
+
+      <p>OpenAPI v0.1 described two methods for providing source
+      script through module source elements: by inline scripts, and by
+      reference. OpenAPI v0.3 replaces both methods with the use of a
+      vessel element to indicate module source scripts. The
+      <code>file</code> and <code>url</code> vessel elements described
+      above can both be used inside module <code>source</code>
+      elements to indicate a resource. The `season1&us;html.xml'
+      module file provides a source script using a <code>url</code>
+      vessel:</p>
+
+      <pre><code><xi:include href="examples/xfiles_pipeline/season1_html.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>In this example the module which uses the R language wraps a
+      source script resource available at the URL
+      `http://127.0.0.1:8080/urlTesting/season1&us;html.R'.</p>
+
+      <p>In general a module source should be able to consume a
+      resource from any type of vessel which can reference a text
+      document. Module sources cannot contain <code>internal</code>
+      type vessels as there is no native internal object defined for
+      the OpenAPI architecture.</p>
+
+      <p>Inline source scripts are also described using a vessel
+      element, <code>script</code>, described below.</p>
+
+      <h3>Script vessels</h3>
+
+      <p>In OpenAPI v0.1 source scripts could be provided directly as
+      the content of module <code>source</code> elements, as in the
+      following example:</p>
+      
+      <pre><code><![CDATA[<module language="R">
+  ...
+  <source><![CDATA[rent.lm <- lm(price ~ suburb + beds, data = aucklandListings)]]]]><![CDATA[>
+  </source>
+  ...
+</module>]]></code></pre>
+      
+      <p>OpenAPI v0.3 introduces the <code>script</code>-type vessel
+      element with which to wrap source scripts inline within a
+      module's source element. The <code>script</code> element has no
+      attributes, and contains the text source script for use in the
+      module. If the source script contains line breaks or XML control
+      characters it can be wrapped in a CDATA block to preserve
+      these. The module file `createGraph.xml' uses a script vessel
+      element to wrap an inline source script:</p>
+
+      <pre><code><xi:include href="examples/simpleGraph/createGraph.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <h3>Vessel use in pipelines</h3>
+
+      <p>Version 0.1 of OpenAPI allowed pipeline authors to reference
+      the contents of a pipeline component in one of two way: by
+      module or pipeline XML wrapped in <code>component</code>
+      element, or by using the component's <code>ref</code> attribute
+      to indicate a file containing the XML. OpenAPI v0.3 retains the
+      use of inline XML, but replaces the use of the <code>ref</code>
+      with the use of vessel elements. The `test_pipeline' pipeline
+      uses <code>file</code> vessel to reference files containing
+      OpenAPI module XML:</p>
+
+      <pre><code><xi:include href="examples/test_pipeline/pipeline.xml" parse="text">
+	<xi:fallback>xinculde processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>When a vessel element is used to reference a pipeline or
+      module XML document the parent <code>component</code> must
+      provide a <code>type</code> attribute indicating that the XML
+      document is either a ``module'' or ``pipeline''. As of OpenAPI
+      v0.3 either a <code>file</code> or <code>url</code> vessel can
+      be used to indicate an XML document for use as a pipeline
+      component.</p>
+
+      <p>It is still possible to provide pipeline or module XML
+      inline. No <code>type</code> attribute is required when inline
+      XML used, as in the example below:</p>
+
+      <pre><code><![CDATA[<pipeline>
+  <component name="m1">
+    <module language="R">
+      <source><script>x <- rnorm(10)</script></source>
+      <output name="x">
+        <internal symbol="x"/>
+        <format formatType="text">R numeric vector</format>
+      </output>
+    </module>
+  </component>
+</pipeline>]]></code></pre>
+      
+      <h2>Module language</h2>
+
+      <p>Module elements in OpenAPI v0.1 contained
+      <code>platform</code> elements which described the platform in
+      which the module's source scripts were to be executed. A module
+      which wrapped source scripts in the R language was described as
+      follows:</p>
+      
+      <pre><code><![CDATA[<module>
+  <platform name="R/>
+  ...
+</module>]]></code></pre>
+
+      <p>OpenAPI v0.3 removes the <code>platform</code> element, and
+      replaces it with a `language' attribute in <code>module</code>
+      elements. The use of ``language'' better makes explicit what is
+      intended by a module wrapping source scripts: all of a module's
+      source scripts are written in a programming language, e.g. R,
+      Python, or shell. An OpenAPI glue system must be able to execute
+      the code contained in these source scripts, but it is up to the
+      glue system author how this execution is carried out. Thus,
+      while the language of a module's source scripts should be fixed,
+      the platform in which the scripts are executed can vary. OpenAPI
+      v0.3 describes a module's language as follows:</p>
+      
+      <pre><code><![CDATA[<module language="python">
+  ...
+</module>]]></code></pre>
+
+      <p>A <code>module</code> element must declare a language. Hinton
+      and Murrell said of OpenAPI v0.1 that a glue system ``must be
+      able to execute the code specified by a module's
+      <code>source</code> elements in the platform specified by the
+      module'' (<cite key="hinton2015introducing">2015a</cite>). For
+      OpenAPI v0.3, a glue system must be able to execute the code
+      specified by a module's <code>source</code> elements in the
+      `language' specified by the <code>module</code>; the platform of
+      execution is up the to the glue system. A glue system should
+      still report if it does not support a module's stated
+      `language'.</p>
+      
+      <h2>Module host</h2>
+
+      <p>One of the limitations identified in OpenAPI v0.1 was its
+      inability to support various system and software version
+      dependencies of modules. OpenAPI v0.3 implements support for
+      module hosts&mdash;machines on which a module is guaranteed to
+      execute properly&mdash;to address this issue.</p>
+
+      <p>A module host is a machine which meets the system, software,
+      and version requirements of a module's sources scripts. A host
+      machine should be available to an OpenAPI glue system over a
+      network. The initial implementation of module hosts described in
+      this project expects that the host machine will provide a Linux-
+      or UNIX-like shell environment over the Secure Shell (SSH)
+      network protocol.</p>
+
+      <p>An OpenAPI glue system is responsible for connecting with a
+      module's host machine. The glue system should support passing
+      module outputs to a module being executed on a host machine, and
+      executing the module's source scripts on the remote host. A glue
+      system is also responsible for resolving output object locations
+      produced on the remote host and providing these as inputs to other
+      modules, either locally or on other host machines.</p>
+
+      <p>A module's host is declared through the optional `host'
+      attribute in a <code>module</code> element. The `host' attribute
+      should contain a Uniform Resource Identifier (URI) which
+      identifies a networked machine on which the module can be
+      correctly executed. The implementation of module hosts described
+      in this project assumes the SSH scheme. The URI for the host
+      should have the form <code>username@host:port</code>. For
+      example:</p>
+
+      <pre><code><![CDATA[<module language="R" host="conduit@openapi.org:2222">
+  ...
+</module>]]></code></pre>
+
+      <p>This XML describes a module whose source scripts will be
+      executed on the host a host machine at the address `openapi.org',
+      accessed via port `2222', logged in as the user `conduit'.</p>
+
+      <p>The SSH protocol requires that a user's connection be
+      authenticated through some method. The improvements to &conduit;
+      version 0.3 support authentication using an SSH identity
+      keyfile. Authentication via password could also be supported by
+      including a password in the host URI, but this has not been
+      implemented in the improvements to &conduit; v0.3.</p>
+
+      <p>As a module's host machine is accessed using the SSH protocol
+      the machine can be provided in any manner which provides an SSH
+      interface. A glue system does not have to be responsible for
+      provisioning a module's environment, only for access to a host
+      via SSH. A host machine can of course be a physical machine, but
+      it can also be provided by a virtual machine
+      environment. Possible candidates for providing host machines
+      include Docker Engine and Vagrant. Docker Engine is a software
+      application for creating and running Docker
+      containers&mdash;wrappers for software applications which can be
+      run in Linux and accessed via SSH (<cite
+      key="docker2015engine">Docker, 2015</cite>). Vagrant is an
+      application for creating, configuring and running virtual
+      machine environments, which can also be accessed via SSH (<cite
+      key="hashicorp2015vagrant">Vagrant, 2014</cite>). Configuration
+      files for host machines provided via virtual machines or
+      containers can be easily shared. This means that a module author
+      could share a configuration file, allowing OpenAPI users to
+      provision a module's host machine on their own machine, instead
+      of a module author having to provide access to a machine to
+      module users in perpetuity. The <a
+      href="#appendix-technical-requirements">technical requirements
+      appendix</a> describes how to provision a Vagrant machine to be
+      used as a module host machine for many of the example modules in
+      the <a href="#appendix-pipeline-examples">pipeline examples
+      appendix</a>.</p>
+
+      <h3>Example: executing a module on a host machine</h3>
+
+      <p>The `kmeans.xml' module file is part of the <a
+      href="#example-irisplots_host">`irisplots&us;host'
+      pipeline</a>. The module XML code follows:</p>
+
+      <pre><code><xi:include href="examples/irisplots_host/kmeans.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module makes use of a host machine,
+      `conduit@127.0.0.1:2222'. When a glue system executes this module
+      it will do so on the host machine at the address provided,
+      accessed via SSH. The glue system will ensure that the input,
+      `data', is available to the module source script on the host
+      machine. The glue system will also make available the output,
+      `clusters', to any modules on the local machine where the glue
+      system is called, or any subsequent host machines called by
+      modules.</p>
+
+      <h3>Example: meeting module dependencies</h3>
+
+      <p>The `xfiles&us;season1.xml' module file in the <a
+      href="#example-xfiles_pipeline">`xfiles&us;pipeline'</a> uses a
+      module host machine to meet the dependencies of the host
+      script. The module XML follows:</p>
+
+      <pre><code><xi:include href="examples/xfiles_pipeline/season1_html.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module produces a resource which is available over HTTP at
+      the URL `http://127.0.0.1:8080/xfiles&us;season&us;1.html'. Making a
+      resource available over HTTP requires a web server&mdash;the host
+      machine given by `conduit@127.0.0.1:2222' provides a web server
+      which can be accessed by the source script when executed on this
+      host.  By using a host machine to execute this module's source
+      script the module user is saved the potentially complicated setup
+      of a web server.</p>
+
+      <p>The source script for this module&mdash;also hosted on the
+      web server of the host machine&mdash;contains the following R
+      code:</p>
+
+      <pre><code><xi:include href="examples/xfiles_pipeline/season1_html.R" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>From the source script we can also see that the module requires
+      the <code>R2HTML</code> package to be installed in R. The host
+      machine has the <code>R2HTML</code> package available, and has
+      permitted the `conduit' user to make changes to the web server's
+      file directory, `/var/www/conduit'.</p>
+
+      <h2>XML validation</h2>
+
+      <p>OpenAPI v0.3 has been described in XML Schema files for use
+      in validating pipeline and module XML. These XML Schema
+      documents have been implemented in the version 0.3 of the
+      &conduit; package (<cite key="hinton2016conduit03">Hinton,
+      2016</cite>), as described in this report, to check the validity
+      of module and pipeline XML files loaded into Conduit.</p>
+
+      <p>The XML Schema files for OpenAPI version 0.3 modules and
+      pipelines can be found on the OpenAPI Validation repository at
+      <url>https://github.com/anhinton/openapiValidation/releases/tag/v0.3</url>.</p>
+      
+      <!-- section break -->
+
+    </section>
+
+    <section id="sec-running-wild-source-scripts">
+
+      <h1>Running `wild' source scripts</h1>
+
+      <p>One of the OpenAPI architecture's aims is to provide a simple
+      way of wrapping, connecting and executing existing data
+      scripts&mdash;`wild' scripts&mdash;without script authors having
+      written their code with OpenAPI in mind. This is similar to
+      Berners-Lee's original proposal for what would become the world
+      wide web, in which he insisted that hypertext would only succeed
+      if it could access existing data. Berners-Lee wrote of
+      hypertext, ``what is required is a gateway program which will
+      map an existing structure onto the hypertext model'' (<cite
+      key="bernerslee1989information">1989</cite>). OpenAPI, too,
+      intends to map existing data sets, data analysis code,
+      workflows, and outputs onto the OpenAPI architecture. However,
+      as discussed in an earlier section, version 0.1 of the OpenAPI
+      architecture had several problems which made it difficult to
+      easily wrap `wild' source scripts. This section demonstrates how
+      the changes in OpenAPI version 0.3 make it possible to meet this
+      aim.</p>
+
+      <h2>Wrapping and subsetting a simple source script</h2>
+
+      <p>In an earlier section we described an R script taken from the
+      STATS 330 course at the University of Auckland (<cite
+      key="klaere2015stats330">Klaere, 2015</cite>). This script file
+      was distributed through the course website for students to
+      examine and execute the code used by Klaere in his lecture
+      slides. The first 32 lines of this script follow:</p>
+
+      <pre><code><![CDATA[##############################
+### STATS 330/762 - Lecture 3: Graphics
+### 23/07/2015
+### Dr. Steffen Klaere
+### Supplementary Code
+### NEEDS: hb1.csv and fever_data.csv
+##############################
+
+### Change working directory
+# Adapt to your own needs
+setwd("<Your Directory>")
+
+### Packages
+library(R330)
+
+###################################
+### First example, Exchange rates
+###################################
+exchange <- read.csv("hb1.csv")
+exchange[,1] <- as.Date(sapply(exchange[,1],function(x){paste(1,x)}),format="%d %B %Y")
+plot(USD~month,data=exchange,type="l",lwd=4,col="steelblue",xlab="Date",ylab="Exchange rate",main="Exchange rate between US$ and NZ$")
+
+### Monthly rate of change
+diff.in.logs <- sapply(2:nrow(exchange),function(i){log(exchange[i,2])-log(exchange[i-1,2])})
+xvec <- seq(-0.2,0.1,length=100)
+
+# Draw histogram
+# density plots
+pdf("data_dens.pdf",width=8,height=6)
+hist(diff.in.logs,nclass=20,freq=F)
+lines(density(diff.in.logs),col="blue",lwd=2)
+dev.off()]]></code></pre>
+
+      <p>The following module XML code shows how this script can be
+      wrapped in an OpenAPI v0.3 module file:</p>
+
+      <pre><code><xi:include href="examples/subsetting/exchange_rates.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+      
+      <p>The original script file contains a data input step, at line
+      19, where the CSV file `hb1.csv' is read into the R session. The
+      module XML above references this CSV file as one of its inputs
+      using a <code>file</code>-type vessel element. This input
+      has been given the name `data', and its <code>file</code>-type
+      vessel indicates it will consume a file resource found on the
+      local machine at `&tilde;/Desktop/hb1.csv'.</p>
+
+      <p>The original script produces&mdash;when executed in batch
+      mode&mdash;PDF files of plots at line 21 and at lines
+      29&ndash;32. However, the author of this module XML would like
+      to produce PNG files rather than PDF files, which means the
+      source file must be changed. Rather than edit the source script
+      directly, however, the use of module input vessel elements
+      allows the module author to operate on the source script using
+      the language in which the script is written. In the XML code
+      above the module author names a module input,
+      `source&us;script', which uses a <code>file</code>-type vessel
+      element to indicate that the module requires a file resource at
+      `&tilde;/Desktop/330&us;Lecture3&us;2015.R'. The module XML
+      above also contains a source element which requires a file
+      resource at `subsettingScript.R'. The contents of
+      `subsettingScript.R' follow:</p>
+
+      <pre><code><xi:include href="examples/subsetting/subsettingScript.R" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>The orignal R script, `330&us;Lecture3&us;2015.R', referenced
+      by the module input `source&us;script', is consumed in line 1 of
+      the `subsettingScript.R' script, and given the symbol
+      `full&us;script'. The `full&us;script' object is then modified
+      in the following ways: the data step line in the original source
+      is modified to consume the local file referenced by the module
+      input `data'; the plotting step at line 21 of the
+      `source&us;script' is wrapped in new code to produce a PNG file
+      when executed; and the code which produces a PDF file on line 29
+      of `source&us;script' is modified to produce a PNG file. Lines
+      16&ndash;33 of the altered `source&us;script' are given the
+      symbol `subset'. Finally this subset of the original
+      `source&us;script' is executed using the <code>eval</code>
+      function.</p>
+
+      <figure src="images/exchange_rate.png" alt="time series
+      plot of exchange rate"><figcaption>exchange&us;rate.png: graphic
+      produced by exchange&us;rates module</figcaption></figure>
+
+      <p>When executed, the module source script given in
+      `subsettingScript.R' will produced two PNG
+      files&mdash;`exchange&us;rate.png' and `data&us;dens.png'. The
+      module XML above indicates that the module will produce these
+      files by naming two outputs, `exchange&us;rate' and
+      `data&us;dens', each of which references the filenames of the
+      PNG files produced using <code>file</code>-type vessel
+      elements.</p>
+
+      <p>This example demonstrates how the <code>file</code>-type
+      vessel elements introduced in OpenAPI version 0.3 make it easier
+      to wrap a `wild' source script in an OpenAPI module. A
+      <code>file</code>-type vessel element is also used to indicate
+      the `wild' script as one of the module's inputs&mdash;doing so
+      allows a module author to make changes to the source script
+      without having to create an altered copy of the script. This
+      method allows a module author to modify, subset, and customise
+      original source scripts to suit the module being written.</p>
+
+      <p>The full module and pipeline XML for this example, can be
+      found in the <a href="#example-exchangeRates">`exchangeRates'
+      section</a>. The pipeline produces the graphic seen in <a
+      href="#figure-2">figure 2</a>. The `exchangeRates' pipeline was
+      executed in &conduit; v0.3 with the following code:</p>
+
+      <pre class="knitr" name="exchangeDemo" options="eval=FALSE">library(conduit)
+exchangeRates &lt;- loadModule(
+    name = "exchangeRates",
+    ref = "examples/subsetting/exchange_rates.xml")
+outputs &lt;- runModule(exchangeRates)
+      </pre>
+
+      <p>The next section examines `wild' scripts which are not made
+      available as simple script files.</p>
+
+      <h2>Wrapping a blog post</h2>
+
+      <p>One of the major difficulties with wrapping `wild' scripts in
+      OpenAPI is that often data analysis code is not shared as a
+      script file&mdash;rather it is embedded and discussed on web
+      pages and in blog posts. The following example demonstrates how
+      the code in a blog post at
+      <url>http://spatial.ly/2015/03/mapping-flows/</url>&mdash;see <a
+      href="#figure-3">figure 3</a> for a screen capture of the blog
+      post&mdash;can be captured and exectuted by OpenAPI v0.3.</p>
+
+      <figure src="images/2015-10-04-blog-code.png" alt="A blog
+      post with code chunks"><figcaption>Screen capture of blog post
+      wrapped in `ukCommuterErsatz' pipeline
+      <url>http://blogs.casa.ucl.ac.uk/category/r-spatial/</url>
+      </figcaption></figure>
+
+      <p>The pipeline example below wraps and executes the code in a
+      blog post called `Mapping Flows in R', which was posted at
+      <url>http://spatial.ly/2015/03/mapping-flows/</url> (<cite
+      key="cheshire2015mapping">Cheshire, 2015</cite>). At the time
+      writing the pipeline there was a technical issue with the site
+      hosting the post which meant the R code was displayed
+      incorrectly, so a blog network feed syndicating the post was
+      used in the pipeline
+      instead&mdash;<url>http://blogs.casa.ucl.ac.uk/category/r-spatial/</url>.
+      As if to demonstrate the ephemeral nature of the web the
+      syndicating page changed its format at the time of this report
+      being written, which led to the example below to be based on an
+      archived copy of the blog post. The original code for this
+      pipeline can be found in the <a
+      href="#example-ukCommuter">`ukCommuter' section</a>; the code
+      used in this example can be found in the <a
+      href="#example-ukCommuterErsatz">`ukCommuterErsatz'
+      section</a>.</p>
+
+      <p>The following XML file `extract&us;scripts.xml' shows how the blog
+      post is wrapped in a module:</p>
+
+      <pre><code><xi:include href="examples/ukCommuterErsatz/extract_scripts.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module has one input, named `blog', which requires a
+      resource available at the URL
+      `http://127.0.0.1:8080/report/R%20spatial%20&bar;%20The%20CASA%20Blog%20Network.html'.
+      The module source consumes the file at this URL, and writes a
+      copy of this file to disk as `source&us;lines.txt'. The module
+      source script extracts the lines of code from the blog post and
+      tidies the code for execution. The code is split into two
+      objects, called `data&us;script' and `graphics&us;script'. These
+      objects are saved as files `data&us;script.R' and
+      `graphics&us;script.R' respectively. The three files created by
+      the module source are named as module outputs `raw&us;source',
+      `data&us;script', and `graphics&us;script' respectively. The
+      module also names two other outputs, `wu03ew&us;v1.csv.zip' and
+      `msoa&us;popweightedcentroids.csv', which reference the URLs of
+      two data files required by the code in the blog post.</p>
+
+      <p>By using a module input with a <code>url</code>-type vessel
+      element indicating the original blog post OpenAPI 0.3 allows a
+      module author to not only wrap and execute the code contained in
+      a blog post, but also to maintain a connection to the original
+      blog post. In this way a module can be updated when its input
+      file is updated. Producing the source code of the original blog
+      resource as an output allows a module author to preserve a blog
+      post as it was when the code was executed. Passing the extracted
+      code out as module outputs allows the module author to preserve
+      the code content of a blog post in an executable form, which can
+      now be passed to another module.</p>
+
+      <p>The original blog post mentions that the resource called
+      `wu03ew&us;v1.csv.zip' in the module XML above needs to be
+      unzipped for the code to be executed. The module XML file
+      `extract&us;flow&us;data.xml' extracts this data from its zip
+      file:</p>
+
+      <pre><code><xi:include href="examples/ukCommuterErsatz/extract_flow_data.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>The `ukCommuterErsatz' pipeline connects the
+      `wu03ew&us;v1.csv.zip' output from the module file
+      `extract&us;scripts.xml' to the corresponding input of the above
+      module, which then returns the uncompressed CSV file as a module
+      output, named `wu03ew&us;v1.csv'. The data scripts embedded in
+      the blog post should now have all the inputs required for
+      execution. A module XML file, `set&us;coords.xml', receives and
+      executes the `data&us;script' output from
+      `extract&us;scripts.xml' above, and the
+      `uk&us;flow&us;graphic.xml' module XML file executes the
+      `graphics&us;script' output, producing the graphic shown in <a
+      href="#figure-4">figure 4</a>. The full details of this pipeline
+      can be seen in the <a
+      href="#example-ukCommuterErsatz">`ukCommuterErsatz'
+      section</a>. The `ukCommuterErsatz' pipeline is executed in
+      &conduit; v0.3 using the following code:</p>
+
+      <pre class="knitr" name="ukCommuterDemo" 
+	   options="eval=FALSE">library(conduit)
+ukCommuterErsatz &lt;- loadPipeline("ukCommuterErsatz",
+                                 "examples/ukCommuterErsatz/pipeline.xml")
+outputs &lt;- runPipeline(ukCommuterErsatz, targetDirectory = tempdir())
+      </pre>
+
+      <figure src="images/ukCommuterGraphic.png" alt="map of UK
+      commuter routes"><figcaption>ukCommuterGraphic.png: graphic
+      produced by the `ukCommuterErsatz'
+      pipeline</figcaption></figure>
+
+      <p>The introduction of <code>url</code>- and
+      <code>file</code>-type vessel elements in OpenAPI v0.3 has made
+      it possible to ``execute'' a blog post, as in the example
+      above. Ordinarily the code in a blog post requires some
+      manipulation to execute, and it is almost never as simple as
+      copying, pasting, and running the code. As in the example here,
+      data analysis code in blog posts can be presented in fragments,
+      with data and software requirements described both pragmatically
+      in the code and in the text of the blog post itself, as with the
+      input files in this example. By wrapping a blog post in an
+      OpenAPI module the author provides an interface to a blog post
+      which allows the repeated execution of the code on different
+      machines. The module file `extract&us;scripts.xml' in the
+      `ukCommuterErsatz' pipeline above provides access to not just
+      the blog post's code, but to its input files. This allows for
+      re-use, not just of the script, but of the inputs
+      themselves.</p>
+
+      <p>The <a href="#example-ukResponseErsatz">`ukResponseErsatz'
+      pipeline</a> re-uses the input resources extracted from the blog
+      post in the `ukCommuterErsatz' pipeline. The `ukResponseErsatz'
+      pipeline wraps a blog post, `Mapping Flows in R ... with
+      data.table and lattice' (<cite
+      key="perpiñánlamigueiro2015mapping">Perpiñán Lamigueiro,
+      2015</cite>), which demonstrates another method of producing a
+      graphic like the one in Cheshire (<cite
+      key="cheshire2015mapping">2015</cite>) using the same data
+      sources&mdash;a screen grab of this blog post can be seen in <a
+      href="#figure-5">figure 5</a>. The `ukResponseErsatz' pipeline
+      is derived from the <a href="#example-ukResponse">`ukResponse'
+      pipeline</a> to preserve this example against the shifting sands
+      of online resources.</p>
+
+      <figure src="images/2015-11-07-response-blog.png" alt="A blog
+      post with code chunks"><figcaption>Screen capture of blog post
+      wrapped in `ukResponseErsatz' pipeline
+      <url>https://procomun.wordpress.com/2015/04/14/mapping-flows-in-r-with-data-table-and-lattice/</url>
+      </figcaption></figure>
+
+      <p>The module XML file `extract&us;script.xml' follows:</p>
+
+      <pre><code><xi:include href="examples/ukResponseErsatz/extract_script.xml" parse="text">
+	<xi:fallback>xinclude processing required to see this
+	document</xi:fallback>
+      </xi:include></code></pre>
+
+      <p>This module has a single input, named `blog', which indicates
+      a resource at the URL
+      `http://127.0.0.1:8080/report/Mapping%20Flows%20in%20R%20%E2%80%A6%20with%20data.table%20and%20lattice%20&bar;%20Omnia%20sunt%20Communia!.html'
+      &mdash;the blog post. The source script of the module retrieves
+      the blog post, and locates a line in the post which refers to a
+      git repository where the post's code is available. The module
+      source script clones this repository, and labels a script of R
+      code as its sole output, named `script'. As in the previous
+      example we have wrapped a blog post, this time one which shares
+      data analysis code by embedding the contents of a git
+      repository, and provided this script as an output for execution
+      in other modules. The `ukResponseErsatz' pipeline passes the
+      inputs from the previous example and this data script to the
+      module `mapping&us;flows.xml' for execution. The graphic
+      produced by this pipeline can be seen in <a
+      href="#figure-6">figure 6</a>. The code used to execute the
+      `ukRsponseErsatz' pipeline in &conduit; v0.3 follows:</p>
+
+      <pre class="knitr" name="ukResponseDemo" 
+	   options="eval=FALSE">library(conduit)
+ukResponseErsatz &lt;- loadPipeline("ukResponseErsatz",
+                                 "examples/ukResponseErsatz/pipeline.xml")
+outputs &lt;- runPipeline(ukResponseErsatz, targetDirectory = tempdir())
+      </pre>
+      
+      <figure src="images/ukResponseGraphic.png" alt="map of UK
+      commuter routes"><figcaption>ukResponseGraphic.png: graphic
+      produced by the `ukResponseErsatz'
+      pipeline</figcaption></figure>
+
+      <p>See <a
+      href="#example-ukResponseErsatz">`ukResponseErsatz'</a> for full
+      details of the module and pipeline XML used in this
+      example..</p>
+
+      <p>We have demonstrated how OpenAPI v0.3 allows module authors
+      to write modules which provide an interface to the resources
+      described in a blog post, and to re-use these resources as
+      inputs to another script, also provided by an interface to a
+      related blog post. Wrapping and labelling code and data
+      resources in OpenAPI modules and pipelines allows an author to
+      update her workflow as these online resources are updated. Using
+      OpenAPI as a wrapper around online resources makes them
+      executable in a way which is often not possible directly from a
+      web browser. OpenAPI modules and pipelines also present a method
+      for embedding and sharing data sets and data analyses online, as
+      it provides a means for readers to run and experiment with code,
+      and to extend data workflows.</p>
+      
+      <!-- section break -->  
+
+    </section>
+
+    <section id="summary">
+
+      <h1 class="unnumbered">Summary</h1>
+
+      <p>The OpenAPI project offers a software solution to the problem
+      of helping people to connect with data. Version 0.1 of OpenAPI
+      had several problems in its specification which made it
+      difficult to author new modules and pipelines, and to wrap
+      existing data analysis scripts in OpenAPI modules. Vessel
+      elements, including <code>file</code>-, <code>url</code>-,
+      <code>script</code>-, and <code>internal</code>-type vessels,
+      were introduced in version 0.3 of OpenAPI. These elements
+      provide a uniform mechanism for referencing module input and
+      output resources, module source scripts, and pipeline
+      components. The use of vessel elements has made authoring
+      OpenAPI modules easier, and made OpenAPI modules better suited
+      to adapting `wild' data analysis scripts. Version 0.3 of OpenAPI
+      also includes the introduction of module `host' machines. These
+      machines provide a stable environment for executing module
+      source scripts which meet the module's software and version
+      dependencies. XML Schema for OpenAPI module and pipeline XML
+      files were also introduced in OpenAPI v0.3. These provide a
+      mechanism for ensuring that module and pipeline XML is
+      valid. The changes in OpenAPI v0.3 were implemented in version
+      0.3 of the R package &conduit;, a prototype OpenAPI glue
+      system.</p>
+
+      <p>The changes introduced in OpenAPI v0.3 have made it much
+      easier for module authors to wrap `wild' data analysis scripts
+      which have not been written with OpenAPI in mind. This report
+      demonstrated several examples of how such existing scripts can
+      be wrapped and executed in OpenAPI. Several examples also
+      demonstrate how data analysis scripts can be subsetted and
+      modified for execution in OpenAPI in a way which preserves the
+      source material, and leverages the features of the script's
+      coding language.</p>
+
+      <p>Future work on the OpenAPI architecture could include
+      publishing a recommendation or specification for OpenAPI glue
+      systems, to assist glue system developers in implementing
+      OpenAPI features. More work also remains to be done in the
+      implementation of module `host' machines, including implementing
+      a standard way for glue systems to authenticate connections with
+      host machines. The method for remote host authentication
+      implemented in OpenAPI and &conduit; versions 0.3 is not well
+      documented, and is not intended as a canonical model for all
+      host connections. It would be desireable to implement standard
+      interfaces for SSH keys and passwords. In particular, work
+      remains to be done on &conduit;'s implementation of module
+      `host' machines, including the way input and output objects are
+      made available to various machines. There are also several other
+      potential candidates for vessel elements which could be
+      implemented in future versions of OpenAPI, including sockets and
+      websockets.</p>
+
+      <p>The &conduit; package is very much a work in progress, and
+      much remains to be implemented, documented, tested and improved
+      in future versions.</p>
+
+      <!-- section break -->
+
+      <hr />
+
+      <subsection class="thanks">
+	<p>This project was funded in full by an Ockham Foundation
+	Postgraduate Scholarship in Statistics. The author expresses
+	his sincere thanks to the Ockham Foundation for making this
+	work possible.</p>
+      </subsection>
+
+    </section>
+
+    <hr/>
+    <section class="references">
+      <h1 class="unnumbered">References</h1>
+      <!-- citations not included in main text -->
+      <cite key="w3c2008extensible"/>
+      <xi:include href="references.html">
+	<xi:fallback>xinclude references.html</xi:fallback>
+      </xi:include>
+    </section>
+
+    <!-- section break -->
+
+    <appendix id="appendix-technical-requirements">
+      <h1>Technical requirements</h1>
+
+      <p>The sections of R code demonstrated in this report were
+      executed in R version 3.2.3 (<cite key="rcore2015">R Core Team,
+      2015</cite>) on an Ubuntu Linux 15.10 (<cite
+      key="ubuntu2015">Ubuntu, 2015</cite>) 64-bit machine.</p>
+
+      <p>Version 0.3 of the &conduit; package (<cite
+      key="hinton2016conduit03">Hinton, 2016</cite>) was used to
+      execute the pipeline examples in this report. The &conduit;
+      package requires the following R packages:</p>
+
+      <ul>
+	<li><code>graph</code> (<cite
+	key="gentleman2015Graph">Gentleman, Whalen, Huber &amp;
+	Falcon, n.d.</cite>)</li>
+	<li><code>RBGL</code> (<cite key="carey2015rbgl">Carey, Long
+	&amp; Gentleman, n.d.</cite>)</li>
+	<li><code>RCurl</code> (<cite key="lang2015rcurl">Lang &amp;
+	the CRAN team, 2015a</cite>)</li>
+	<li><code>XML</code> (<cite key="lang2015xml">Lang &amp; the
+	CRAN team, 2015b</cite>)</li>
+      </ul>
+
+      <p>The machine used to execute the pipeline examples had
+      graphviz version 2.38.0 (<cite key="gansner2000anopen">Gansner
+      &amp; North, 2000</cite>) installed. The following R packages
+      are also required to execute the example pipelines:</p>
+
+      <ul>
+	<li><code>classInt</code> (<cite
+	key="bivand2015classint">Bivand, 2015</cite>)</li>
+	<li><code>data.table</code> (<cite
+	key="dowle2015datatable">Dowle, Srinivasan, Short, &amp;
+	Lianoglou, with contributions from Saporta &amp; Antonyan,
+	2015</cite>)</li>
+	<li><code>git2r</code> (<cite key="csardi2015git2r">Csardi,
+	Jefferis, Hester, Ram &amp; Widgren, 2015</cite>)</li>
+	<li><code>ggplot2</code> (<cite
+	key="wickham2009ggplot2">Wickham, 2009</cite>)</li>
+	<li><code>gridGraphviz</code> (<cite
+	key="murrell2015gridgraphviz">Murrell &amp; Hinton,
+	2015</cite>)</li>
+	<li><code>lattice</code> (<cite
+	key="sarkar2008lattice">Sarkar, 2008</cite>)</li>
+	<li><code>Rgraphviz</code> (<cite
+	key="hansen2015rgraphviz">Hansen, Gentry, Long, Gentleman,
+	Falcon, Hahne &amp; Sarkar, n.d.</cite>)</li>
+      </ul>
+
+      <p>Several of the pipeline and modules example require a host
+      machine; this host machine is provide by a virtual machine
+      running Vagrant version 1.7.4 (<cite
+      key="hashicorp2015vagrant">Hashicorp, 2015</cite>) and
+      VirtualBox version 5.0.14 (<cite
+      key="oracle2016virtualbox">Oracle Corporation, 2016</cite>). The
+      configuration files for this machine are available from
+      <url>https://github.com/anhinton/vagrant-conduit/releases/tag/2015honsReport</url>.
+      This machine can be installed and started using the following
+      commands in a Linux terminal:</p>
+
+      <pre><code>## download machine configuration files
+git clone https://github.com/anhinton/vagrant-conduit.git --branch 2015honsReport
+
+## start host machine
+cd vagrant-conduit
+vagrant up
+      </code></pre>
+
+      <p>This may take some time on the first run, as Vagrant will
+      download a system image, and install the necessary packages on
+      the host machine. Once the vagrant machine has finished booting
+      for the first time you will need to add the machine's SSH key to
+      your &tilde;/.ssh/known&us;hosts file for the pipeline examples
+      to work. This only needs to be done once, with:</p>
+
+      <pre><code>## add host machine to known hosts
+ssh-keyscan -H -p 2222 127.0.0.1 >> ~/.ssh/known_hosts
+      </code></pre>
+      
+      <p>The host machine can be stopped with the command
+      <code>vagrant halt</code>, and started again with the command
+      <code>vagrant up</code>. More information on running Vagrant
+      machines can be found on the Vagrant website at
+      <url>https://www.vagrantup.com/</url>.</p>
+
+      <!-- section break -->
+
+    </appendix>
+
+    <appendix id="appendix-pipeline-examples">
+
+      <h1>Pipeline examples</h1>
+
+      <div id="example-simpleGraph">
+
+	<h2>simpleGraph</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/simpleGraph/createGraph.xml</url></li>
+	  <li><url>examples/simpleGraph/layoutGraph.xml</url></li>
+	  <li><url>examples/simpleGraph/plotGraph.xml</url></li>
+	</ul>
+
+	<p>Pipeline: <url>examples/simpleGraph/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+
+	<pre class="knitr" name="simpleGraph">library(conduit)
+simpleGraph &lt;-
+    loadPipeline(name = "simpleGraph",
+                 ref = "examples/simpleGraph/pipeline.xml")
+outputs &lt;- runPipeline(simpleGraph)
+file.exists("pipelines/simpleGraph/plotGraph/example.png")
+	</pre>
+
+	<pre class="knitr" name="simpleGraphCleanup"
+	     options="echo=FALSE, results='hide'">## simpleGraph cleanup
+file.copy(outputs$plotGraph$example.png$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "example.png"),
+          overwrite = TRUE)
+	</pre>
+	
+	<figure src="pipelines/simpleGraph/plotGraph/example.png"
+	alt="Node and edge graph produced by simpleGraph
+	pipeline"><figcaption>example.png: graphic produced by
+	simpleGraph pipeline</figcaption></figure>
+      </div>
+
+      <div id="example-shellExample">
+	<h2>shellExample</h2>
+	
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/shellExample/createGraph.xml</url></li>
+	  <li><url>examples/shellExample/graphtodot.xml</url></li>
+	  <li><url>examples/shellExample/plotgraphviz.xml</url></li>
+	</ul>
+	
+	<p>Pipeline: <url>examples/shellExample/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+	
+	<pre class="knitr" name="shellExample">library(conduit)
+shellExample &lt;-
+    loadPipeline(name = "shellExample",
+                 ref = "examples/shellExample/pipeline.xml")
+output &lt;- runPipeline(shellExample)
+file.exists("pipelines/shellExample/plotgraphviz/simpleGraph.png")
+	</pre>
+
+	<pre class="knitr" name="shellExampleCleanup" 
+	     options="echo=FALSE, results='hide'">## shellExample cleanup
+file.copy(output$plotgraphviz$simpleGraph.png$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "simpleGraph.png"),
+          overwrite = TRUE)
+	</pre>
+
+	<figure src="images/simpleGraph.png" alt="node and edge
+	graph"><figcaption>simpleGraph.png: graphic produced by
+	shellExample pipeline</figcaption></figure>
+      </div>
+
+      <div id="example-fileStart">
+	<h2>fileStart</h2>
+	
+	<p>Module: <url>examples/fileStart/fileStart.xml</url></p>
+
+	<h3>Execute module in &conduit;</h3>
+
+	<pre class="knitr" name="fileStartPrep"
+	     options="echo=FALSE, results='hide'">## fileStart prep
+irisfile &lt;- "~/Desktop/iris.csv"
+write.csv(iris, irisfile)
+	</pre>
+
+	<pre class="knitr" name="fileStart">library(conduit)
+fileStart &lt;-
+    loadModule(name = "fileStart",
+               ref = "examples/fileStart/fileStart.xml")
+outputs &lt;- runModule(fileStart, targetDirectory = "modules")
+file.exists(outputs$species$object) 
+	</pre>
+
+	<pre class="knitr" name="fileStartClean"
+	     options="echo=FALSE, results='hide'">## fileStart cleanup
+file.copy(outputs$fileStart$object,
+          file.path("~/uoastorage/openapi/documentation/report/images",
+                    "Rplot001.png"),
+                    overwrite = TRUE)
+file.remove(irisfile) 
+	</pre>
+
+	<figure src="images/Rplot001.png" alt="pie
+	chart"><figcaption>Rplot001.png: graphic produced by fileStart
+	module</figcaption></figure>
+      </div>
+
+      <div id="example-xfiles_pipeline">
+	<h2>xfiles&us;pipeline</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/xfiles_pipeline/xfiles_season1.xml</url></li>
+	  <li><url>examples/xfiles_pipeline/season1_html.xml</url></li>
+	</ul>
+
+	<p>Source script found at
+	http://127.0.0.1:8080/urlTesting/season1&us;html.R:
+	<url>examples/xfiles_pipeline/season1_html.R</url></p>
+	
+	<p>Pipeline:
+	<url>examples/xfiles_pipeline/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+
+	<pre class="knitr" name="xfiles_pipeline">library(conduit)
+xfiles_pipeline &lt;-
+    loadPipeline(name = "xfiles_pipeline",
+                 ref = "examples/xfiles_pipeline/pipeline.xml")
+output &lt;- runPipeline(xfiles_pipeline)
+RCurl::url.exists(output$season1_html$season1_html$object)
+	</pre>
+
+	<figure src="images/2015-10-28-urlOutput.png" alt="screen grab
+	of X Files season 1 web
+	page"><figcaption>xfiles&us;season1.html: web page produced by
+	xfiles&us;pipeline</figcaption></figure>
+      </div>
+      
+      <div id="example-irisplots_host">
+	<h2>irisplots&us;host</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/irisplots_host/irisdata.xml</url></li>
+	  <li><url>examples/irisplots_host/kmeans.xml</url></li>
+	  <li><url>examples/irisplots_host/scattermatrix.xml</url></li>
+	</ul>
+	
+	<p>Pipeline: <url>examples/irisplots_host/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+
+	<pre class="knitr" name="irisplots_host">library(conduit)
+irisplots_host &lt;-
+    loadPipeline(name = "irisplots_host",
+                 ref = "examples/irisplots_host/pipeline.xml")
+outputs &lt;- runPipeline(irisplots_host)
+file.exists(outputs$scattermatrix$scattermatrix.png$object)
+	</pre>
+
+	<pre class="knitr" name="irisplots_hostCleanup" 
+	     options="echo=FALSE, results='hide'">file.copy(outputs$scattermatrix$scattermatrix.png$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "scattermatrix.png"),
+          overwrite = TRUE)
+	</pre>
+
+	<figure src="images/scattermatrix.png" alt="scattermatrix
+	plot"><figcaption>scattermatrix.png: graphic produced by
+	irisplots&us;host</figcaption></figure>
+      </div>
+
+      <div id="example-exchangeRates">
+	<h2>exchangeRates</h2>
+
+	<p>Module: <url>examples/subsetting/exchange_rates.xml</url></p>
+
+	<p>Source script:
+	<url>examples/subsetting/subsettingScript.R</url></p>
+
+	<h3>Execute module in &conduit;</h3>
+
+	<pre class="knitr" name="exchangeRatesPrep" 
+	     options="echo=FALSE, results='hide'">## exhangeRatesPrep
+csvfile &lt;- "~/Desktop/hb1.csv"
+scriptfile &lt;- "~/Desktop/330_Lecture3_2015.R"
+file.copy("examples/subsetting/hb1.csv", csvfile, overwrite = TRUE)
+file.copy("examples/subsetting/330_Lecture3_2015.R", scriptfile,
+          overwrite = TRUE)
+	</pre>
+
+	<pre class="knitr" name="exchangeRates">library(conduit)
+exchangeRates &lt;- loadModule(
+    name = "exchangeRates",
+    ref = "examples/subsetting/exchange_rates.xml")
+outputs &lt;- runModule(exchangeRates, targetDirectory = "modules")
+file.exists(outputs$exchange_rate$object)
+	</pre>
+
+	<pre class="knitr" name="exchangeRatesCleanup" 
+	     options="echo=FALSE, results='hide'">## exchangeRatesCleanup
+file.copy(outputs$exchange_rate$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "exchange_rate.png"),
+          overwrite = TRUE)
+file.remove(csvfile)
+file.remove(scriptfile)
+	</pre>
+
+	<figure src="images/exchange_rate.png" alt="time series plot
+	of exchange rate"><figcaption>exchange&us;rate.png: graphic
+	produced by exchange&us;rates module</figcaption></figure>
+      </div>
+
+      <div id="example-ukCommuter">
+	<h2>ukCommuter</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/ukCommuter/extract_flow_data.xml</url></li>
+	  <li><url>examples/ukCommuter/extract_scripts.xml</url></li>
+	  <li><url>examples/ukCommuter/retrieve_centroids.xml</url></li>
+	  <li><url>examples/ukCommuter/set_coords.xml</url></li>
+	  <li><url>examples/ukCommuter/uk_flow_graphic.xml</url></li>
+	</ul>
+
+	<p>Pipeline: <url>examples/ukCommuter/pipeline.xml</url></p>
+      </div>
+
+      <div id="example-ukCommuterErsatz">
+	<h2>ukCommuterErsatz</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/ukCommuterErsatz/extract_flow_data.xml</url></li>
+	  <li><url>examples/ukCommuterErsatz/extract_scripts.xml</url></li>
+	  <li><url>examples/ukCommuterErsatz/retrieve_centroids.xml</url></li>
+	  <li><url>examples/ukCommuterErsatz/set_coords.xml</url></li>
+	  <li><url>examples/ukCommuterErsatz/uk_flow_graphic.xml</url></li>
+	</ul>
+
+	<p>Pipeline: <url>examples/ukCommuterErsatz/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+
+	<pre class="knitr" name="ukCommuterErsatz">library(conduit)
+ukCommuterErsatz &lt;- loadPipeline("ukCommuterErsatz",
+                                    "examples/ukCommuterErsatz/pipeline.xml")
+outputs &lt;- runPipeline(ukCommuterErsatz, targetDirectory = tempdir())
+file.exists(outputs$uk_flow_graphic$pngfile$object)
+	</pre>
+	
+	<pre class="knitr" name="ukCommuterErsatzCleanup" 
+	     options="echo=FALSE, results='hide'">## ukCommuterErsartz cleanup
+file.copy(outputs$uk_flow_graphic$pngfile$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "ukCommuterGraphic.png"),
+          overwrite = TRUE)
+	</pre>
+
+	<figure src="images/ukCommuterGraphic.png" alt="map of UK
+	commuter routes"><figcaption>ukCommuterGraphic.png: graphic
+	produced by ukCommuterErsatz pipeline</figcaption></figure>
+      </div>
+
+      <div id="example-ukResponse">
+	<h2>ukResponse</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/ukResponse/extract_flow_data.xml</url></li>
+	  <li><url>examples/ukResponse/extract_script.xml</url></li>
+	  <li><url>examples/ukResponse/mapping_flows.xml</url></li>
+	<li><url>examples/ukResponse/retrieve_centroids.xml</url></li> </ul>
+
+	<p>Pipeline: <url>examples/ukResponse/pipeline.xml</url></p>
+      </div>
+
+      <div id="example-ukResponseErsatz">
+	<h2>ukResponseErsatz</h2>
+
+	<p>Modules:</p>
+
+	<ul>
+	  <li><url>examples/ukResponseErsatz/extract_flow_data.xml</url></li>
+	  <li><url>examples/ukResponseErsatz/extract_script.xml</url></li>
+	  <li><url>examples/ukResponseErsatz/mapping_flows.xml</url></li>
+	  <li><url>examples/ukResponseErsatz/retrieve_centroids.xml</url></li>
+	</ul>
+
+	<p>Pipeline: <url>examples/ukResponseErsatz/pipeline.xml</url></p>
+
+	<h3>Execute pipeline in &conduit;</h3>
+
+	<pre class="knitr" name="ukResponseErsatz">library(conduit)
+ukResponseErsatz &lt;- loadPipeline("ukResponseErsatz",
+                                    "examples/ukResponseErsatz/pipeline.xml")
+outputs &lt;- runPipeline(ukResponseErsatz, targetDirectory = tempdir())
+file.exists(outputs$mapping_flows$plot$object)
+	</pre>
+
+	<pre class="knitr" name="ukResponseErsatzCleanup" 
+	     options="echo=FALSE, results='hide'">## ukResponseErsatz cleanup
+file.copy(outputs$mapping_flows$plot$object,
+file.path("~/uoastorage/openapi/documentation/report/images",
+          "ukResponseGraphic.png"),
+          overwrite = TRUE)
+	</pre>
+	
+	<figure src="images/ukResponseGraphic.png" alt="map of UK
+	commuter routes"><figcaption>ukResponseGraphic.png: graphic
+	produced by ukResponseErsatz pipeline</figcaption></figure>
+      </div>
+
+    </appendix>
+
+    <hr/>
+
+    <div><p><a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/"><img
+    alt="Creative Commons License" style="border-width:0"
+    src="https://i.creativecommons.org/l/by/4.0/88x31.png" /></a><br
+    /><span xmlns:dct="http://purl.org/dc/terms/"
+    property="dct:title">OpenAPI version 0.3: Improving the OpenAPI
+    architecture</span> by <span
+    xmlns:cc="http://creativecommons.org/ns#"
+    property="cc:attributionName">Ashley Noel Hinton and Paul
+    Murrell</span> is licensed under a <a rel="license"
+    href="http://creativecommons.org/licenses/by/4.0/">Creative
+    Commons Attribution 4.0 International License</a>.</p></div>
+
+  </body>
+  
+</document>

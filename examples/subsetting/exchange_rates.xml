@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Run the first example from STATS 330 lecture 3, returning the first two plots as PNG files</description>
+  <input name="source_script">
+    <file ref="~/Desktop/330_Lecture3_2015.R"/>
+    <format formatType="text">R script</format>
+  </input>
+  <input name="data">
+    <file ref="~/Desktop/hb1.csv"/>
+    <format formatType="text">CSV file</format>
+  </input>
+  <source>
+    <file ref="subsettingScript.R"/>
+  </source>
+  <output name="exchange_rate">
+    <file ref="exchange_rate.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+  <output name="data_dens">
+    <file ref="data_dens.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+</module>

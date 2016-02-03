@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014" language="shell">
+  <description>Convert xml document to Rhtml document</description>
+  <input name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </input>
+  <source>
+    <file ref="toRhtml.sh"/>
+  </source>
+  <output name="report.Rhtml">
+    <file ref="~/uoastorage/openapi/documentation/report/report.Rhtml"/>
+    <format>knitr Rhtml file</format>
+  </output>
+</module>

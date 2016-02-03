@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>extract R code from gist linked in blog post http://127.0.0.1:8080/report/Mapping%20Flows%20in%20R%20%E2%80%A6%20with%20data.table%20and%20lattice%20|%20Omnia%20sunt%20Communia!.html</description>
+  <input name="blog">
+    <url ref="http://127.0.0.1:8080/report/Mapping%20Flows%20in%20R%20%E2%80%A6%20with%20data.table%20and%20lattice%20|%20Omnia%20sunt%20Communia!.html"/>
+    <format formatType="text">html file</format>
+  </input>
+  <source>
+    <script><![CDATA[## extract gist url from blog
+library(RCurl)
+page <- readLines(textConnection(getURL("http://127.0.0.1:8080/report/Mapping%20Flows%20in%20R%20%E2%80%A6%20with%20data.table%20and%20lattice%20|%20Omnia%20sunt%20Communia!.html")))
+line <- page[grep("<a href=\"http://127.0.0.1:8080", page)[1]]
+gist_url <- strsplit(line, "href=\"")[[1]][2]
+gist_url <- strsplit(gist_url, "/raw")[[1]][1]
+
+## clone gist
+local_path <- file.path(getwd(), "gist")
+dir.create(local_path, recursive=TRUE)
+system2("git", c("clone", gist_url, local_path))]]></script>
+  </source>
+  <output name="script">
+    <file ref="gist/mappingFlows.R"/>
+    <format formatType="text">R script</format>
+  </output>
+</module>

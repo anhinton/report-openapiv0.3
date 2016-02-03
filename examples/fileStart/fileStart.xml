@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Read the iris data from a CSV file and produce a pie chart of the species</description>
+  <input name="datafile">
+    <file ref="~/Desktop/iris.csv"/>
+    <format formatType="text">CSV file</format>
+  </input>
+  <source>
+    <script><![CDATA[data <- read.csv("~/Desktop/iris.csv")
+speciesTable <- table(data$Species)
+png()
+pie(speciesTable)
+dev.off()]]></script>
+  </source>
+  <output name="species">
+    <file ref="Rplot001.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+</module>

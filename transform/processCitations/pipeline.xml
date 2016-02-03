@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<pipeline xmlns="http://www.openapi.org/2014/">
+  <description>Extract &lt;cite key=""/&gt; tags and create HTML references section</description>
+  <component name="extractCitations" type="module">
+    <file ref="extractCitations.xml"/>
+  </component>
+  <component name="citeproc" type="module">
+    <file ref="citeproc.xml"/>
+  </component>
+  <component name="underscore" type = "module">
+    <file ref="underscore.xml"/>
+  </component>
+  <component name="addUsEntity" type="module">
+    <file ref="addUsEntity.xml"/>
+  </component>
+  <component name="refId" type="module">
+    <file ref="refId.xml"/>
+  </component>
+  <pipe>
+    <start component="extractCitations" output="citations"/>
+    <end component="citeproc" input="citations"/>
+  </pipe>
+  <pipe>
+    <start component="citeproc" output="references"/>
+    <end component="underscore" input="references"/>
+  </pipe>
+  <pipe>
+    <start component="underscore" output="references"/>
+    <end component="addUsEntity" input="references"/>
+  </pipe>
+  <pipe>
+    <start component="addUsEntity" output="references"/>
+    <end component="refId" input="references"/>
+  </pipe>
+</pipeline>

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>knit Rhtml to html</description>
+  <input name="report.Rhtml">
+    <file ref="~/uoastorage/openapi/documentation/report/report.Rhtml"/>
+    <format>knitr Rhtml file</format>
+  </input>
+  <source>
+    <file ref="knitReport.R"/>
+  </source>
+  <output name="report.html">
+    <file ref="~/uoastorage/openapi/documentation/report/report.html"/>
+    <format>HTML file</format>
+  </output>
+</module>

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Add sequential numbers to figure elements</description>
+  <input name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </input>
+  <source>
+    <file ref="figureNumbers.R"/>
+  </source>
+  <output name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </output>
+</module>

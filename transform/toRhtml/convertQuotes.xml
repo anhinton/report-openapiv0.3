@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="shell">
+  <description>Convert latex-style quotes to plain text</description>
+  <input name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </input>
+  <source>
+    <file ref="convertQuotes.sh"/>
+  </source>
+  <output name="report.xml">
+    <file ref="report.xml"/>
+    <format>XML file</format>
+  </output>
+</module>

@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<module xmlns="http://www.openapi.org/2014/" language="R">
+  <description>Execute script from http://127.0.0.1:8080/report/Mapping%20Flows%20in%20R%20%E2%80%A6%20with%20data.table%20and%20lattice%20|%20Omnia%20sunt%20Communia!.html</description>
+  <input name="wu03ew_v1.csv">
+    <file ref="wu03ew_v1.csv"/>
+    <format formatType="text">CSV file</format>
+  </input>
+  <input name="msoa_popweightedcentroids.csv">
+    <file ref="msoa_popweightedcentroids.csv"/>
+    <format formatType="text">CSV file</format>
+  </input>
+  <input name="script">
+    <file ref="mappingFlows.R"/>
+    <format formatType="text">R script</format>
+  </input>
+  <source>
+    <script><![CDATA[mappingFlows <- readLines("mappingFlows.R")
+mappingFlows[36] <- paste("plot <-", mappingFlows[36])
+mappingFlows <-
+    c(mappingFlows,
+      "png(\"ukResponseGraphic.png\")",
+      "print(plot)",
+      "dev.off()")
+
+eval(parse(text=mappingFlows))]]></script>
+  </source>
+  <output name="centroids">
+    <internal symbol="centroids"/>
+    <format formatType="text">data.table</format>
+  </output>
+  <output name="trajects">
+    <internal symbol="trajects"/>
+    <format formatType="text">numeric matrix</format>
+  </output>
+  <output name="plot">
+    <file ref="ukResponseGraphic.png"/>
+    <format formatType="text">PNG file</format>
+  </output>
+</module>

@@ -1,0 +1,110 @@
+<ul>
+  <li>
+    <a href="#c1-introduction">Introduction</a>
+    <ul>
+      <li>
+        <a href="#c2-outline">Outline</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <a href="#c3-background">Background</a>
+    <ul>
+      <li>
+        <a href="#c4-the-openapi-architecture">The OpenAPI architecture</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <a href="#c5-problems-in-openapi-version-0.1">Problems in OpenAPI version 0.1</a>
+    <ul>
+      <li>
+        <a href="#c6-specifying-module-input-and-output-elements">Specifying module input and output elements</a>
+      </li>
+      <li>
+        <a href="#c7-specifying-module-source-elements">Specifying module source elements</a>
+      </li>
+      <li>
+        <a href="#c8-meeting-module-dependencies">Meeting module dependencies</a>
+      </li>
+      <li>
+        <a href="#c9-validating-module-and-pipeline-xml">Validating module and pipeline XML</a>
+      </li>
+      <li>
+        <a href="#c10-running-wild-source-scripts">Running 'wild' source scripts</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <a href="#c11-changes-in-openapi-version-0.3">Changes in OpenAPI version 0.3</a>
+    <ul>
+      <li>
+        <a href="#c12-vessels">Vessels</a>
+      </li>
+      <li>
+        <a href="#c13-module-language">Module language</a>
+      </li>
+      <li>
+        <a href="#c14-module-host">Module host</a>
+      </li>
+      <li>
+        <a href="#c15-xml-validation">XML validation</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <a href="#c16-running-wild-source-scripts">Running 'wild' source scripts</a>
+    <ul>
+      <li>
+        <a href="#c17-wrapping-and-subsetting-a-simple-source-script">Wrapping and subsetting a simple source script</a>
+      </li>
+      <li>
+        <a href="#c18-wrapping-a-blog-post">Wrapping a blog post</a>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <a href="#c19-summary">Summary</a>
+  </li>
+  <li>
+    <a href="#c20-references">References</a>
+  </li>
+  <li>
+    <a href="#c21-technical-requirements">Technical requirements</a>
+  </li>
+  <li>
+    <a href="#c22-pipeline-examples">Pipeline examples</a>
+    <ul>
+      <li>
+        <a href="#c23-simplegraph">simpleGraph</a>
+      </li>
+      <li>
+        <a href="#c24-shellexample">shellExample</a>
+      </li>
+      <li>
+        <a href="#c25-filestart">fileStart</a>
+      </li>
+      <li>
+        <a href="#c26-xfiles_pipeline">xfiles_pipeline</a>
+      </li>
+      <li>
+        <a href="#c27-irisplots_host">irisplots_host</a>
+      </li>
+      <li>
+        <a href="#c28-exchangerates">exchangeRates</a>
+      </li>
+      <li>
+        <a href="#c29-ukcommuter">ukCommuter</a>
+      </li>
+      <li>
+        <a href="#c30-ukcommuterersatz">ukCommuterErsatz</a>
+      </li>
+      <li>
+        <a href="#c31-ukresponse">ukResponse</a>
+      </li>
+      <li>
+        <a href="#c32-ukresponseersatz">ukResponseErsatz</a>
+      </li>
+    </ul>
+  </li>
+</ul>
